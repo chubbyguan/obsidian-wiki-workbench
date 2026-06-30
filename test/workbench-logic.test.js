@@ -90,6 +90,23 @@ run("parseDashboard extracts quick actions, sections, cards, and tasks", () => {
   assert.equal(content.next, "发布后回流日记和内容复盘");
 });
 
+run("parseDashboard preserves loose section-level tasks in an implicit card", () => {
+  const data = DashboardLogic.parseDashboard(`## Todo 列表
+
+- [ ] 修复健康检查断链
+
+### 重点跟进
+id: work-follow-up
+- [ ] 正常卡片任务
+`);
+  const section = data.sections[0];
+  assert.equal(section.cards.length, 2);
+  assert.equal(section.cards[0].title, "未分组任务");
+  assert.equal(section.cards[0].id, "todo-未分组任务");
+  assert.equal(section.cards[0].tasks[0].text, "修复健康检查断链");
+  assert.equal(section.cards[1].id, "work-follow-up");
+});
+
 run("rollover removes daily done tasks, carries open work, keeps content, and resets habits", () => {
   const data = DashboardLogic.parseDashboard(sampleDashboard);
   const rolled = DashboardLogic.rolloverDashboardForDate(sampleDashboard, data, "2026-06-07");

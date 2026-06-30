@@ -51,6 +51,20 @@ function parseDashboard(markdown) {
       continue;
     }
 
+    if (!currentCard && currentSection && isTaskLikeLine(line)) {
+      currentCard = {
+        id: "",
+        title: "未分组任务",
+        type: currentSection.type,
+        lineIndex: i,
+        endLine: lines.length,
+        tasks: [],
+        body: [],
+        meta: {},
+      };
+      currentSection.cards.push(currentCard);
+    }
+
     if (!currentCard) continue;
 
     const metaMatch = line.match(/^([a-zA-Z][\w-]*):\s*(.*)$/);
@@ -163,6 +177,10 @@ function insertTaskLine(markdown, card, text) {
     lines.splice(insertAt, 0, line);
   }
   return lines.join("\n");
+}
+
+function isTaskLikeLine(line) {
+  return /^(\s*)- \[([ xX])\]\s+.*$/.test(line) || /^(\s*)- (✅|☑|✔)\s+.*$/.test(line);
 }
 
 function updateTaskLine(line, text, checked) {
@@ -305,6 +323,7 @@ module.exports = {
   getDailyRolloverPolicy,
   inferSectionType,
   insertTaskLine,
+  isTaskLikeLine,
   markTaskCarryover,
   parseDashboard,
   parseDashboardFrontmatter,
