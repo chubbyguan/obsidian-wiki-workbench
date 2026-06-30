@@ -50,7 +50,7 @@ const WorkbenchDerive = requireWorkbenchModule("workbench-derive.js");
 
 const {
   DEFAULT_HEALTH_CACHE_MAX_AGE_HOURS: HEALTH_CACHE_MAX_AGE_HOURS,
-  DEFAULT_GBRAIN_LINK_DENSITY_WARN: GBRAIN_LINK_DENSITY_WARN,
+  DEFAULT_RELATION_LINK_DENSITY_WARN: RELATION_LINK_DENSITY_WARN,
 } = WorkbenchDerive;
 
 const VIEW_TYPE = "wiki-workbench-view";
@@ -62,6 +62,12 @@ const DEFAULT_SETTINGS = {
   contentFlowPath: "Wiki/Content/workflow.md",
   projectIndexPath: "Wiki/Projects/index.md",
   healthCachePath: "Workbench/vault-health.json",
+  agentQueuePath: "Workbench/agent-queue.md",
+  workbenchEyebrow: "MARKDOWN KNOWLEDGE OPS",
+  workbenchTitle: "Wiki Workbench",
+  workbenchSubtitle: "每天打开先看这里：今天推进什么、Agent 正在处理什么、知识库有哪些变化、日记和计划有没有回填。",
+  dailyGoalText: "目标：先推进最重要的事，再回填日记与复盘",
+  activityWorkspacesJson: JSON.stringify(WorkbenchDerive.DEFAULT_ACTIVITY_WORKSPACES, null, 2),
   autoAppendCompletedToDaily: true,
   completionLogHeading: "今日完成",
   workbenchTheme: "day",
@@ -127,6 +133,24 @@ module.exports = class WikiWorkbenchPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "run-setup-check",
+      name: "运行 Wiki Workbench 上手检查",
+      callback: () => this.openSetupCheck(),
+    });
+
+    this.addCommand({
+      id: "export-agent-queue",
+      name: "导出 Agent 队列",
+      callback: () => this.exportAgentQueue(),
+    });
+
+    this.addCommand({
+      id: "open-agent-queue",
+      name: "打开 Agent 队列",
+      callback: () => this.openAgentQueue(),
+    });
+
+    this.addCommand({
       id: "cycle-workbench-theme",
       name: "切换工作台主题",
       callback: () => this.cycleWorkbenchTheme(),
@@ -141,6 +165,10 @@ module.exports = class WikiWorkbenchPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+
+  getActivityWorkspaces() {
+    return parseActivityWorkspacesSetting(this.settings.activityWorkspacesJson);
   }
 
   async setWorkbenchTheme(themeKey) {
@@ -296,6 +324,92 @@ module.exports = class WikiWorkbenchPlugin extends Plugin {
     await this.openFile(file);
   }
 
+  async openSetupCheck() {
+    new WorkbenchSetupModal(this.app, this).open();
+  }
+
+  async exportAgentQueue() {
+    const { markdown } = await this.readDashboard();
+    const data = DashboardLogic.parseDashboard(markdown);
+    const content = WorkbenchDerive.formatAgentQueueMarkdown(data, {
+      dashboardFile: normalizeFilePath(this.settings.dashboardFile),
+      generatedAt: new Date().toISOString(),
+    });
+    const file = await this.ensureNote(normalizeFilePath(this.settings.agentQueuePath), content);
+    await this.app.vault.modify(file, content);
+    new Notice(`已导出 Agent 队列：${file.path}`);
+    return file;
+  }
+
+  async openAgentQueue() {
+    const file = await this.exportAgentQueue();
+    await this.openFile(file);
+  }
+
+  getSetupTargets(date = new Date()) {
+    return [
+      {
+        key: "dashboard",
+        label: "工作台文件",
+        path: normalizeFilePath(this.settings.dashboardFile),
+        description: "任务、卡片和快速入口的 Markdown 数据源。",
+      },
+      {
+        key: "today",
+        label: "今日日记",
+        path: this.getTodayNotePath(date),
+        description: "完成记录、明日计划和 Agent 复盘会写在这里。",
+      },
+      {
+        key: "week",
+        label: "本周计划",
+        path: this.getWeekPlanPath(date),
+        description: "承接本周目标和节奏。",
+      },
+      {
+        key: "month",
+        label: "本月计划",
+        path: this.getMonthPlanPath(date),
+        description: "承接月度重点和项目节奏。",
+      },
+      {
+        key: "agentQueue",
+        label: "Agent 队列",
+        path: normalizeFilePath(this.settings.agentQueuePath),
+        description: "给外部 AI agent 读取的任务队列导出文件。",
+      },
+      {
+        key: "contentFlow",
+        label: "内容流程",
+        path: normalizeFilePath(this.settings.contentFlowPath),
+        description: "记录内容生产、发布、回流的流程约定。",
+      },
+      {
+        key: "projectIndex",
+        label: "项目索引",
+        path: normalizeFilePath(this.settings.projectIndexPath),
+        description: "集中放置项目入口和状态链接。",
+      },
+    ];
+  }
+
+  getSetupChecklist(date = new Date()) {
+    return this.getSetupTargets(date).map((target) => ({
+      ...target,
+      exists: this.app.vault.getAbstractFileByPath(target.path) instanceof TFile,
+    }));
+  }
+
+  async ensureStarterFiles(date = new Date()) {
+    await this.ensureDashboardFile();
+    await this.ensureNote(this.getTodayNotePath(date), createDailyNote(formatDate(date)));
+    await this.ensureNote(this.getWeekPlanPath(date), createWeekPlan(getISOWeekString(date)));
+    await this.ensureNote(this.getMonthPlanPath(date), createMonthPlan(formatMonth(date)));
+    await this.exportAgentQueue();
+    await this.ensureNote(normalizeFilePath(this.settings.contentFlowPath), createContentWorkflowNote());
+    await this.ensureNote(normalizeFilePath(this.settings.projectIndexPath), createProjectIndexNote());
+  }
+
   getTodayNotePath(date = new Date()) {
     return normalizeFilePath(`${trimSlashes(this.settings.dailyFolder)}/${formatDate(date)}`);
   }
@@ -439,7 +553,7 @@ class WorkbenchView extends ItemView {
     const healthPath = normalizeVaultPath(this.plugin.settings.healthCachePath || DEFAULT_SETTINGS.healthCachePath);
     if (file.path === dashboardPath || file.path === healthPath) return true;
     if (file.path === this.plugin.getTodayNotePath(new Date())) return true;
-    return file.extension === "md" && Boolean(WorkbenchDerive.getActivityWorkspaceForPath(file.path));
+    return file.extension === "md" && Boolean(WorkbenchDerive.getActivityWorkspaceForPath(file.path, this.plugin.getActivityWorkspaces()));
   }
 
   async render() {
@@ -449,7 +563,9 @@ class WorkbenchView extends ItemView {
     this.markdown = markdown;
     this.data = DashboardLogic.parseDashboard(markdown);
     this.health = await this.plugin.readHealthCache();
-    this.activity = WorkbenchDerive.collectVaultActivity(this.app.vault.getMarkdownFiles());
+    this.activity = WorkbenchDerive.collectVaultActivity(this.app.vault.getMarkdownFiles(), {
+      roots: this.plugin.getActivityWorkspaces(),
+    });
     this.dailyDigest = await this.plugin.readTodayDigest();
 
     const root = this.containerEl.children[1];
@@ -481,10 +597,10 @@ class WorkbenchView extends ItemView {
   renderHero(root) {
     const hero = root.createDiv({ cls: "cw-hero" });
     const text = hero.createDiv({ cls: "cw-hero-text" });
-    text.createDiv({ cls: "cw-eyebrow", text: "LLM WIKI · HERMES DAILY OPS" });
-    text.createEl("h1", { text: "Wiki Workbench" });
+    text.createDiv({ cls: "cw-eyebrow", text: this.plugin.settings.workbenchEyebrow || DEFAULT_SETTINGS.workbenchEyebrow });
+    text.createEl("h1", { text: this.plugin.settings.workbenchTitle || DEFAULT_SETTINGS.workbenchTitle });
     text.createEl("p", {
-      text: "每天打开先看这里：今天推进什么、Agent 正在处理什么、内容卡在哪一步、生活事项有没有漏。",
+      text: this.plugin.settings.workbenchSubtitle || DEFAULT_SETTINGS.workbenchSubtitle,
     });
 
     const controls = hero.createDiv({ cls: "cw-hero-controls" });
@@ -567,7 +683,7 @@ class WorkbenchView extends ItemView {
   renderCoreCards(container) {
     const title = container.createDiv({ cls: "cw-cockpit-title" });
     title.createEl("h2", { text: "今日驾驶舱" });
-    title.createSpan({ text: "目标：先完成发布，再回填日记与复盘" });
+    title.createSpan({ text: this.plugin.settings.dailyGoalText || DEFAULT_SETTINGS.dailyGoalText });
 
     const grid = container.createDiv({ cls: "cw-core-grid" });
     for (const def of SECTION_TYPES) {
@@ -611,16 +727,13 @@ class WorkbenchView extends ItemView {
   }
 
   renderKnowledgeFlow(container) {
-    const activity = this.activity || WorkbenchDerive.collectVaultActivity(this.app.vault.getMarkdownFiles());
-    const byKey = activity.byKey || {};
-    const wikiWeek = ["external", "research", "graph", "creation", "project", "agent", "wiki"]
-      .reduce((sum, key) => sum + (byKey[key] ? byKey[key].week : 0), 0);
-    const steps = [
-      ["素材库", byKey.source ? byKey.source.week : 0],
-      ["wiki", wikiWeek],
-      ["产出", byKey.output ? byKey.output.week : 0],
-      ["日记", byKey.daily ? byKey.daily.week : 0],
-    ];
+    const activity = this.activity || WorkbenchDerive.collectVaultActivity(this.app.vault.getMarkdownFiles(), {
+      roots: this.plugin.getActivityWorkspaces(),
+    });
+    const active = activity.workspaces.filter((workspace) => workspace.files > 0);
+    const steps = (active.length > 0 ? active : activity.workspaces)
+      .slice(0, 4)
+      .map((workspace) => [workspace.label, workspace.week || 0]);
     const flow = container.createDiv({ cls: "cw-knowledge-flow" });
     steps.forEach(([label, value], index) => {
       const step = flow.createDiv({ cls: "cw-flow-step" });
@@ -903,9 +1016,9 @@ class WorkbenchView extends ItemView {
   renderDailyTimeline(container) {
     const timeline = container.createDiv({ cls: "cw-timeline" });
     const items = [
-      ["上午 · 发布", "公众号群发，检查标题、摘要、排版和首屏节奏。"],
-      ["下午 · 分发", "X Thread、小红书拆分、即刻切片，人工终审后发布。"],
-      ["晚上 · 回流", "把完成情况写回日记，准备周六复盘材料。"],
+      ["上午 · 聚焦", "先处理今日行动里最重要的事项，减少上下文切换。"],
+      ["下午 · 推进", "处理 Todo、项目和内容流水线，把需要 Agent 协作的任务派出去。"],
+      ["晚上 · 回流", "把完成情况写回日记，整理明日计划和需要确认的事项。"],
     ];
     for (const [title, text] of items) {
       const card = timeline.createDiv({ cls: "cw-time-card" });
@@ -1145,6 +1258,9 @@ class WorkbenchView extends ItemView {
       }
     });
     box.createDiv({ cls: "cw-agent-note", text: this.getAgentSuggestion(stats) });
+    const actions = box.createDiv({ cls: "cw-agent-actions" });
+    this.createActionButton(actions, "打开 Agent 队列", "bot", "agent-open", () => this.plugin.openAgentQueue());
+    this.createActionButton(actions, "刷新导出", "download", "agent-export", () => this.plugin.exportAgentQueue());
   }
 
   renderAgentQueue(container, groups) {
@@ -1239,13 +1355,14 @@ class WorkbenchView extends ItemView {
     const warnings = WorkbenchDerive.getHealthIssueCount(health, "warning");
     const errors = WorkbenchDerive.getHealthIssueCount(health, "error");
     const stale = WorkbenchDerive.isHealthCacheStale(health, HEALTH_CACHE_MAX_AGE_HOURS);
-    const gbrain = WorkbenchDerive.getGbrainRelationHealth(health, GBRAIN_LINK_DENSITY_WARN);
+    const relation = WorkbenchDerive.getRelationGraphHealth(health, RELATION_LINK_DENSITY_WARN);
     const box = sidebar.createDiv({ cls: "cw-side-box cw-health-light" });
     box.createEl("h3", { text: "知识库健康" });
     this.renderHealthRow(box, "Vault 文件", String(summary && summary.files ? summary.files : snapshot.files));
-    this.renderHealthRow(box, "素材库", String(snapshot.source));
-    this.renderHealthRow(box, "wiki 页面", String(summary && summary.wiki_files ? summary.wiki_files : snapshot.wiki));
-    this.renderHealthRow(box, "产出文件", String(snapshot.output));
+    this.renderHealthRow(box, "跟踪 Markdown", String(summary && summary.markdown_files ? summary.markdown_files : snapshot.markdown));
+    for (const workspace of snapshot.workspaces.slice(0, 3)) {
+      this.renderHealthRow(box, workspace.label, String(workspace.files));
+    }
     if (summary) {
       const hasBlockingIssues = warnings > 0 || errors > 0 || stale;
       const healthLabel = stale && warnings === 0 && errors === 0 ? "缓存过期" : hasBlockingIssues ? "健康警告" : "健康状态";
@@ -1256,7 +1373,7 @@ class WorkbenchView extends ItemView {
         healthValue,
         hasBlockingIssues ? "warn" : "ok"
       );
-      this.renderHealthRow(box, "GBrain 关系", gbrain.label, gbrain.state);
+      this.renderHealthRow(box, "知识关系", relation.label, relation.state);
       if (stale) {
         const item = box.createDiv({ cls: "cw-health-issue" });
         item.createSpan({ text: "cache_stale" });
@@ -1272,7 +1389,7 @@ class WorkbenchView extends ItemView {
       }
       box.createDiv({
         cls: "cw-side-hint",
-        text: `缓存：${WorkbenchDerive.formatHealthTime(health.generatedAt)} · ${gbrain.hint} · 工作台只读观察结构，不移动素材库、不改 LLM Wiki 目录。`,
+        text: `缓存：${WorkbenchDerive.formatHealthTime(health.generatedAt)} · ${relation.hint} · 工作台只读观察结构，不移动或重写你的知识库文件。`,
       });
       return;
     }
@@ -1510,11 +1627,16 @@ class WorkbenchView extends ItemView {
 
   getVaultSnapshot() {
     const files = this.app.vault.getFiles();
+    const markdownFiles = files.filter((file) => file.extension === "md");
+    const roots = this.plugin.getActivityWorkspaces();
+    const workspaces = roots.map((root) => ({
+      label: root.label || root.key,
+      files: markdownFiles.filter((file) => WorkbenchDerive.getActivityWorkspaceForPath(file.path, [root])).length,
+    }));
     return {
       files: files.length,
-      source: files.filter((file) => file.path.startsWith("素材库/")).length,
-      wiki: files.filter((file) => file.path.startsWith("wiki/") && file.extension === "md").length,
-      output: files.filter((file) => file.path.startsWith("产出/")).length,
+      markdown: markdownFiles.length,
+      workspaces,
     };
   }
 
@@ -1725,6 +1847,58 @@ class WorkbenchTaskListModal extends Modal {
   }
 }
 
+class WorkbenchSetupModal extends Modal {
+  constructor(app, plugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+
+  onOpen() {
+    this.render();
+  }
+
+  render() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("cw-task-inbox-modal");
+    const items = this.plugin.getSetupChecklist();
+    const missing = items.filter((item) => !item.exists);
+
+    const head = contentEl.createDiv({ cls: "cw-task-inbox-head" });
+    head.createEl("h2", { text: "Wiki Workbench 上手检查" });
+    head.createDiv({
+      cls: "cw-task-inbox-subtitle",
+      text: missing.length > 0 ? "这些文件缺失时，工作台仍能打开，但完整体验会受影响。" : "基础文件已经就绪，可以直接使用工作台。",
+    });
+    head.createDiv({ cls: "cw-task-inbox-count", text: missing.length > 0 ? `缺失 ${missing.length} 项` : "已就绪" });
+
+    const list = contentEl.createDiv({ cls: "cw-task-inbox-list" });
+    for (const item of items) {
+      const row = list.createDiv({ cls: "cw-task-inbox-item" });
+      const main = row.createDiv({ cls: "cw-task-inbox-main" });
+      const meta = main.createDiv({ cls: "cw-task-inbox-meta" });
+      meta.createSpan({ text: item.label });
+      meta.createSpan({ cls: item.exists ? "cw-task-inbox-owner" : "cw-task-inbox-status", text: item.exists ? "已存在" : "缺失" });
+      main.createDiv({ cls: "cw-task-inbox-text", text: item.path });
+      main.createDiv({ cls: "cw-task-inbox-subtitle", text: item.description });
+    }
+
+    const actions = contentEl.createDiv({ cls: "cw-modal-actions" });
+    const create = actions.createEl("button", { text: missing.length > 0 ? "创建缺失文件" : "重新检查", cls: "mod-cta" });
+    create.addEventListener("click", async () => {
+      await this.plugin.ensureStarterFiles();
+      new Notice("Wiki Workbench 基础文件已检查完成");
+      this.render();
+      this.plugin.refreshWorkbenchViews();
+    });
+    const open = actions.createEl("button", { text: "打开工作台" });
+    open.addEventListener("click", async () => {
+      this.close();
+      await this.plugin.activateView();
+    });
+  }
+}
+
 class TaskTextModal extends Modal {
   constructor(app, title, onSubmit, initialValue = "") {
     super(app);
@@ -1769,6 +1943,10 @@ class WorkbenchSettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h2", { text: "Wiki Workbench" });
 
+    this.addTextSetting("顶部标识", "MARKDOWN KNOWLEDGE OPS", "workbenchEyebrow");
+    this.addTextSetting("工作台标题", "Wiki Workbench", "workbenchTitle");
+    this.addTextSetting("工作台说明", "每天打开先看这里：今天推进什么、Agent 正在处理什么、知识库有哪些变化、日记和计划有没有回填。", "workbenchSubtitle");
+    this.addTextSetting("今日目标文案", "目标：先推进最重要的事，再回填日记与复盘", "dailyGoalText");
     this.addTextSetting("工作台文件", "dashboard.md", "dashboardFile");
     this.addTextSetting("日记目录", "Journal", "dailyFolder");
     this.addTextSetting("周计划目录", "Plans/Weekly", "weeklyFolder");
@@ -1776,8 +1954,10 @@ class WorkbenchSettingTab extends PluginSettingTab {
     this.addTextSetting("内容流程", "Wiki/Content/workflow.md", "contentFlowPath");
     this.addTextSetting("项目索引", "Wiki/Projects/index.md", "projectIndexPath");
     this.addTextSetting("健康缓存", "Workbench/vault-health.json", "healthCachePath");
+    this.addTextSetting("Agent 队列导出", "Workbench/agent-queue.md", "agentQueuePath");
     this.addTextSetting("完成记录标题", "今日完成", "completionLogHeading");
     this.addThemeSetting();
+    this.addWorkspaceSetting();
     this.addToggleSetting("勾选完成后写入今日日记", "autoAppendCompletedToDaily");
   }
 
@@ -1791,6 +1971,7 @@ class WorkbenchSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings[key] = value.trim() || placeholder;
             await this.plugin.saveSettings();
+            this.plugin.refreshWorkbenchViews();
           });
       });
   }
@@ -1804,6 +1985,33 @@ class WorkbenchSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings[key] = value;
             await this.plugin.saveSettings();
+          });
+      });
+  }
+
+  addWorkspaceSetting() {
+    new Setting(this.containerEl)
+      .setName("工作区分类 JSON")
+      .setDesc("用于工作区统计、最近沉淀和顶部知识流。每项需要 key、label、path 或 paths。")
+      .addTextArea((text) => {
+        text
+          .setValue(this.plugin.settings.activityWorkspacesJson || DEFAULT_SETTINGS.activityWorkspacesJson)
+          .onChange(async (value) => {
+            this.plugin.settings.activityWorkspacesJson = value.trim() || DEFAULT_SETTINGS.activityWorkspacesJson;
+            await this.plugin.saveSettings();
+            this.plugin.refreshWorkbenchViews();
+          });
+        text.inputEl.rows = 10;
+        text.inputEl.cols = 48;
+      })
+      .addButton((button) => {
+        button
+          .setButtonText("恢复默认")
+          .onClick(async () => {
+            this.plugin.settings.activityWorkspacesJson = DEFAULT_SETTINGS.activityWorkspacesJson;
+            await this.plugin.saveSettings();
+            this.display();
+            this.plugin.refreshWorkbenchViews();
           });
       });
   }
@@ -1833,6 +2041,25 @@ function normalizeThemeKey(value) {
 function getThemeDefinition(value) {
   const key = normalizeThemeKey(value);
   return WORKBENCH_THEMES.find((theme) => theme.key === key) || WORKBENCH_THEMES[0];
+}
+
+function parseActivityWorkspacesSetting(value) {
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    if (!Array.isArray(parsed)) return WorkbenchDerive.DEFAULT_ACTIVITY_WORKSPACES;
+    const valid = parsed
+      .filter((workspace) => workspace && workspace.key && (workspace.path || workspace.paths))
+      .map((workspace) => ({
+        ...workspace,
+        key: String(workspace.key).trim(),
+        label: String(workspace.label || workspace.key).trim(),
+        role: String(workspace.role || "工作区").trim(),
+        color: String(workspace.color || "#6690cc").trim(),
+      }));
+    return valid.length > 0 ? valid : WorkbenchDerive.DEFAULT_ACTIVITY_WORKSPACES;
+  } catch (error) {
+    return WorkbenchDerive.DEFAULT_ACTIVITY_WORKSPACES;
+  }
 }
 
 function normalizeQuickActions(actions, plugin) {
@@ -2097,12 +2324,12 @@ type: focus
 ### 重点跟进
 id: work-follow-up
 type: task
-- [ ] 5 月复盘填写 📅 ${today}
+- [ ] 梳理本周最重要的项目进展 📅 ${today}
 
 ### Agent 待办
 id: agent-todo
 type: task
-- [ ] [Agent] 根据周计划刷新今日行动
+- [ ] [owner:Agent] [status:todo] 根据周计划刷新今日行动
 
 ## 内容生成
 
@@ -2112,9 +2339,9 @@ type: content
 link: [[Plans/Weekly/{{week}}]]
 status: planning
 next: 确认本周主线稿件
-- [ ] 公众号长文推进
-- [ ] 即刻日更
-- [ ] 小红书笔记拆分
+- [ ] 整理一个可发布的长文或 newsletter 选题
+- [ ] 拆分一条社媒短内容
+- [ ] 回收反馈并更新内容流程
 
 ## 生活待办
 
@@ -2205,6 +2432,66 @@ status: active
 ## 月度目标
 
 - [ ]
+`;
+}
+
+function createContentWorkflowNote() {
+  const today = formatDate(new Date());
+  return `---
+title: Content Workflow
+type: workflow
+tags: [workflow, content]
+created: ${today}
+updated: ${today}
+summary: Content workflow used by Wiki Workbench
+source: self
+---
+
+# Content Workflow
+
+## Stages
+
+- idea
+- research
+- material pack
+- draft
+- edit
+- publish
+- archive
+
+## Working Rules
+
+- Keep source links close to the draft.
+- Move blocked work back to the dashboard with \`[status:blocked]\`.
+- When an agent produces output, link the output note from the dashboard task.
+`;
+}
+
+function createProjectIndexNote() {
+  const today = formatDate(new Date());
+  return `---
+title: Project Index
+type: index
+tags: [projects]
+created: ${today}
+updated: ${today}
+summary: Project index used by Wiki Workbench
+source: self
+---
+
+# Project Index
+
+## Active Projects
+
+- [ ] Add your first project
+
+## Waiting
+
+- [ ] Items waiting for review or external input
+
+## Done
+
+- Completed projects move here or link to archive notes.
 `;
 }
 

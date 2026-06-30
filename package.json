@@ -1,9 +1,10 @@
 {
   "name": "wiki-workbench",
-  "version": "0.6.12",
+  "version": "1.0.0",
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "build:release": "bash scripts/package-release.sh",
     "check": "node --check main.js && node --check dashboard-logic.js && node --check task-logic.js && node --check workbench-derive.js && node --check date-utils.js && node --check test/workbench-logic.test.js",
     "test": "node test/workbench-logic.test.js"
   }

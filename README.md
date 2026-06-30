@@ -12,13 +12,22 @@ The plugin keeps your vault structure intact. It reads and writes normal Markdow
 - Carryover inbox for unfinished tasks from previous days.
 - Daily rollover: clears completed daily work, keeps content pipelines, resets recurring habits, and marks unfinished tasks with `[carryover:YYYY-MM-DD]`.
 - Content pipeline view for idea, research, material pack, draft, edit, publish, and archive stages.
-- Vault activity lens with workspace stats, recent files, and a 91-day activity heatmap.
+- Configurable workspace activity lens with recent files and a 91-day activity heatmap.
+- First-run setup check that creates the starter dashboard, daily note, plans, content workflow, project index, and agent queue.
+- Agent queue export to a generated Markdown handoff file for Codex, Claude Code, local scripts, or scheduled automations.
 - Journal backfill: completed tasks can be appended to a daily note.
 - Compatibility with emoji-style completed tasks such as `- ✅ 08:16 Sync completed`.
 
 ## Install
 
-Clone or copy this repository into an Obsidian vault plugin directory:
+Download a release zip from GitHub releases and extract it into an Obsidian vault plugin directory:
+
+```bash
+mkdir -p /path/to/vault/.obsidian/plugins/wiki-workbench
+unzip wiki-workbench-1.0.0.zip -d /path/to/vault/.obsidian/plugins/wiki-workbench
+```
+
+For local development, clone or copy this repository into the same plugin directory:
 
 ```bash
 mkdir -p /path/to/vault/.obsidian/plugins/wiki-workbench
@@ -30,7 +39,8 @@ Then enable it in Obsidian:
 1. Open `Settings -> Community plugins`.
 2. Enable community plugins if needed.
 3. Enable `Wiki Workbench`.
-4. Open the workbench from the ribbon icon or the command palette.
+4. Run `Wiki Workbench: 运行 Wiki Workbench 上手检查` from the command palette.
+5. Open the workbench from the ribbon icon or the command palette.
 
 ## Default Files
 
@@ -45,6 +55,7 @@ The plugin defaults can be changed in the plugin settings tab.
 | Content workflow | `Wiki/Content/workflow.md` |
 | Project index | `Wiki/Projects/index.md` |
 | Health cache | `Workbench/vault-health.json` |
+| Agent queue export | `Workbench/agent-queue.md` |
 
 `data.json` is an Obsidian local settings file. Do not publish it if it contains personal paths or preferences.
 
@@ -54,6 +65,10 @@ Open `Settings -> Wiki Workbench` in Obsidian after enabling the plugin.
 
 | Setting | What it controls | Recommended value |
 | --- | --- | --- |
+| 顶部标识 | Small label above the workbench title. | `MARKDOWN KNOWLEDGE OPS` |
+| 工作台标题 | Main heading in the workbench hero. | `Wiki Workbench` |
+| 工作台说明 | One-sentence description under the heading. | Match your vault workflow |
+| 今日目标文案 | Goal text shown above the cockpit cards. | Match your daily ritual |
 | 工作台文件 | The Markdown file used as the workbench database. | `dashboard.md` |
 | 日记目录 | Folder for daily notes created/opened by the plugin. | `Journal` |
 | 周计划目录 | Folder for weekly plans. | `Plans/Weekly` |
@@ -61,14 +76,16 @@ Open `Settings -> Wiki Workbench` in Obsidian after enabling the plugin.
 | 内容流程 | A note that describes your content workflow. | `Wiki/Content/workflow.md` |
 | 项目索引 | A project index note opened from quick actions. | `Wiki/Projects/index.md` |
 | 健康缓存 | Optional JSON health snapshot used by the sidebar. | `Workbench/vault-health.json` |
+| Agent 队列导出 | Generated Markdown file for external AI agents. | `Workbench/agent-queue.md` |
 | 完成记录标题 | Heading in daily notes where completed tasks are appended. | `今日完成` |
 | 主题 | Visual theme for the workbench. | Any built-in theme |
+| 工作区分类 JSON | Paths tracked by the activity lens and health sidebar. | Keep the default, or map it to your vault |
 | 勾选完成后写入今日日记 | Whether completed tasks are appended to the daily note. | Enabled |
 
 Minimum setup:
 
-1. Create a folder structure that matches the settings you choose.
-2. Create `dashboard.md`, or let the plugin create its default dashboard.
+1. Run `Wiki Workbench: 运行 Wiki Workbench 上手检查`.
+2. Let the plugin create missing starter files, or create a folder structure that matches the settings you choose.
 3. Keep the dashboard path stable. The plugin writes task changes back to this file by line.
 4. Keep daily notes as normal Markdown. The plugin creates missing daily notes automatically.
 
@@ -87,7 +104,10 @@ Wiki/
     index.md
 Workbench/
   vault-health.json
+  agent-queue.md
 ```
+
+The activity lens is configurable. The default workspace JSON tracks folders such as `Inbox`, `Wiki`, `Projects`, `Content`, `Journal`, `Plans`, `Resources`, and `Archive`. If your vault uses different names, edit `工作区分类 JSON` in plugin settings.
 
 The default dashboard template uses Chinese section titles because the current UI labels are Chinese. You can still use English card titles and task text. Section type detection recognizes common Chinese section names today; for the most reliable rendering, keep the four top-level sections as shown below:
 
@@ -216,6 +236,18 @@ For new integrations, prefer the explicit `[owner:*]` and `[status:*]` tokens.
 
 The UI also has an action to delegate a task to the agent. That action rewrites the task to `[owner:Agent] [status:todo]`.
 
+### Agent queue export
+
+Run `Wiki Workbench: 导出 Agent 队列` or click `刷新导出` in the Agent sidebar panel. The plugin writes a generated handoff note to `Workbench/agent-queue.md` by default.
+
+Run `Wiki Workbench: 打开 Agent 队列` to refresh and open that file. The export includes:
+
+- Ready-for-agent tasks.
+- Waiting-for-human tasks.
+- Blocked tasks.
+- Recently done agent tasks.
+- Source section, card, and dashboard line references.
+
 ### Agent output rules
 
 For reliable collaboration, ask your agent to follow these rules:
@@ -267,7 +299,9 @@ No Obsidian plugin API is required for this workflow.
 
 ```text
 README.md                    Plugin documentation
+CHANGELOG.md                 Release notes
 manifest.json                Obsidian plugin manifest
+versions.json                Obsidian version compatibility map
 package.json                 Node test scripts
 main.js                      Plugin lifecycle, rendering, commands, modals, vault writes
 dashboard-logic.js           Dashboard parsing, task insertion, rollover, task-line writes
@@ -276,6 +310,8 @@ workbench-derive.js          Derived stats, pipeline state, health state, activi
 date-utils.js                Date helpers
 styles.css                   Layout and themes
 test/workbench-logic.test.js Core logic tests
+scripts/package-release.sh   Builds dist/wiki-workbench-VERSION.zip
+.github/workflows/ci.yml     GitHub Actions test and packaging workflow
 ```
 
 ## Verify
@@ -285,6 +321,7 @@ Run from the plugin directory:
 ```bash
 npm test
 npm run check
+npm run build:release
 ```
 
 For an Obsidian DOM smoke test, use your own Obsidian automation setup or manually verify that:
@@ -293,13 +330,17 @@ For an Obsidian DOM smoke test, use your own Obsidian automation setup or manual
 - the workbench view opens from the command palette
 - the dashboard renders
 - task check/edit/add actions update `dashboard.md`
+- setup check creates missing starter files
+- agent queue export writes `Workbench/agent-queue.md`
 
 ## Publishing Notes
 
 Files suitable for a public repository:
 
 - `README.md`
+- `CHANGELOG.md`
 - `manifest.json`
+- `versions.json`
 - `package.json`
 - `main.js`
 - `dashboard-logic.js`
@@ -307,6 +348,8 @@ Files suitable for a public repository:
 - `workbench-derive.js`
 - `date-utils.js`
 - `styles.css`
+- `scripts/package-release.sh`
+- `.github/workflows/ci.yml`
 - `test/workbench-logic.test.js`
 - `.gitignore`
 
@@ -319,13 +362,13 @@ Do not publish:
 
 ## Status
 
-- Version: `0.6.12`
+- Version: `1.0.0`
 - Runtime: no-build CommonJS
 - Platform: Obsidian desktop
-- Tests: Node logic tests
+- Tests: Node logic tests, syntax checks, release zip build
 
 ## Future Work
 
 - Split more rendering code out of `main.js`.
-- Add `versions.json` and release packaging for formal Obsidian plugin distribution.
 - Consider TypeScript and a small build step if the codebase continues to grow.
+- Prepare a formal submission to the Obsidian community plugin directory.

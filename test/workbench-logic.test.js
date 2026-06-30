@@ -400,50 +400,78 @@ run("derive helpers classify cards, visible tasks, pipeline, channels, and badge
 
   const channels = WorkbenchDerive.getChannelChips({
     title: "发布派生",
-    next: "公众号 + X Thread + 小红书",
+    next: "newsletter + social thread",
     tasks: [],
   }).map((chip) => chip.key);
-  assert.deepEqual(channels, ["wechat", "x", "xiaohongshu"]);
+  assert.deepEqual(channels, ["longform", "social"]);
 
   assert.equal(WorkbenchDerive.getTodoCardKind({ title: "Agent 队列", tasks: [{ text: "[owner:Agent] 拉素材" }] }).key, "agent");
   assert.equal(WorkbenchDerive.getTaskBadge({ checked: false, text: "审核选题 [status:waiting-confirm]" }).label, "等确认");
   assert.equal(WorkbenchDerive.getTaskBadge({ checked: false, text: "昨天未完成 [遗留:2026-06-06]" }).label, "续 06-06");
 });
 
-run("derive health helpers summarize issue and GBrain relation state", () => {
+run("derive health helpers summarize issue and relation graph state", () => {
   const health = {
     generatedAt: "2026-06-07T00:00:00.000Z",
-    summary: { files: 3884, wiki_files: 1447, warning: 1, error: 0 },
+    summary: { files: 3884, markdown_files: 1447, warning: 1, error: 0 },
     issues: [
       { level: "info", check: "low_wikilinks" },
-      { level: "warning", check: "gbrain_links_sparse", path: "GBrain" },
-      { level: "error", check: "broken_link", path: "wiki/a.md" },
+      { level: "warning", check: "relation_links_sparse", path: "Knowledge graph" },
+      { level: "error", check: "broken_link", path: "Wiki/a.md" },
     ],
-    gbrain: { Links: "6", Pages: "4027" },
+    relations: { links: "6", pages: "4027" },
   };
 
   assert.equal(WorkbenchDerive.getHealthSummary(health).files, 3884);
   assert.equal(WorkbenchDerive.getHealthIssueCount(health, "warning"), 1);
-  assert.deepEqual(WorkbenchDerive.getHealthIssues(health).map((issue) => issue.check), ["broken_link", "gbrain_links_sparse"]);
-  assert.deepEqual(WorkbenchDerive.getGbrainRelationHealth(health), {
+  assert.deepEqual(WorkbenchDerive.getHealthIssues(health).map((issue) => issue.check), ["broken_link", "relation_links_sparse"]);
+  assert.deepEqual(WorkbenchDerive.getRelationGraphHealth(health), {
     label: "6 / 4027",
     state: "warn",
-    hint: "GBrain 关系层偏稀",
+    hint: "知识关系层偏稀",
   });
   assert.equal(WorkbenchDerive.parseHealthNumber("4,027 pages"), 4027);
   assert.equal(WorkbenchDerive.isHealthCacheStale(health, 12, Date.parse("2026-06-07T06:00:00.000Z")), false);
   assert.equal(WorkbenchDerive.isHealthCacheStale(health, 4, Date.parse("2026-06-07T06:00:00.000Z")), true);
 });
 
-run("derive vault activity summarizes LLM Wiki workspaces and recent deposits", () => {
+run("formatAgentQueueMarkdown exports agent collaboration protocol", () => {
+  const data = DashboardLogic.parseDashboard(`---
+dashboard: true
+---
+
+## Todo 列表
+
+### Agent 队列
+id: agent
+type: task
+- [ ] [owner:Agent] [status:todo] Summarize source notes
+- [ ] [owner:User] [status:waiting-confirm] Review [[Wiki/output]]
+- [ ] [owner:Agent] [status:blocked] Draft blocked by missing links
+- [x] [owner:Agent] [status:done] Indexed weekly notes
+`);
+
+  const exported = WorkbenchDerive.formatAgentQueueMarkdown(data, {
+    dashboardFile: "dashboard.md",
+    generatedAt: "2026-06-07T00:00:00.000Z",
+  });
+  assert(exported.includes("## Ready For Agent"));
+  assert(exported.includes("[owner:Agent] [status:todo] Summarize source notes"));
+  assert(exported.includes("## Waiting For Human"));
+  assert(exported.includes("[owner:User] [status:waiting-confirm] Review [[Wiki/output]]"));
+  assert(exported.includes("## Blocked"));
+  assert(exported.includes("line 10"));
+});
+
+run("derive vault activity summarizes configured workspaces and recent deposits", () => {
   const now = Date.parse("2026-06-07T12:00:00.000Z");
   const day = 24 * 60 * 60 * 1000;
   const files = [
-    { path: "素材库/trending/a.md", basename: "a", extension: "md", stat: { mtime: now - day } },
-    { path: "素材库/trending/b.md", basename: "b", extension: "md", stat: { mtime: now - 10 * day } },
-    { path: "wiki/📡 外部输入/a.md", basename: "观点提取", extension: "md", stat: { mtime: now - 2 * day } },
-    { path: "产出/草稿/post.md", basename: "post", extension: "md", stat: { mtime: now - 40 * day } },
-    { path: "日记/2026-06-07.md", basename: "2026-06-07", extension: "md", stat: { mtime: now } },
+    { path: "Inbox/clips/a.md", basename: "a", extension: "md", stat: { mtime: now - day } },
+    { path: "Inbox/clips/b.md", basename: "b", extension: "md", stat: { mtime: now - 10 * day } },
+    { path: "Wiki/Research/a.md", basename: "research", extension: "md", stat: { mtime: now - 2 * day } },
+    { path: "Content/Drafts/post.md", basename: "post", extension: "md", stat: { mtime: now - 40 * day } },
+    { path: "Journal/2026-06-07.md", basename: "2026-06-07", extension: "md", stat: { mtime: now } },
     { path: ".obsidian/plugins/demo.md", basename: "demo", extension: "md", stat: { mtime: now } },
     { path: "random.md", basename: "random", extension: "md", stat: { mtime: now } },
   ];
@@ -451,18 +479,18 @@ run("derive vault activity summarizes LLM Wiki workspaces and recent deposits", 
   const activity = WorkbenchDerive.collectVaultActivity(files, { now, days: 7 });
   assert.equal(activity.summary.files, 5);
   assert.equal(activity.summary.vaultFiles, 6);
-  assert.equal(activity.byKey.source.files, 2);
-  assert.equal(activity.byKey.source.week, 1);
-  assert.equal(activity.byKey.external.files, 1);
-  assert.equal(activity.byKey.output.state, "cold");
-  assert.equal(activity.summary.busiestWorkspace.key, "source");
-  assert.equal(activity.recentFiles[0].path, "日记/2026-06-07.md");
+  assert.equal(activity.byKey.inbox.files, 2);
+  assert.equal(activity.byKey.inbox.week, 1);
+  assert.equal(activity.byKey.knowledge.files, 1);
+  assert.equal(activity.byKey.content.state, "cold");
+  assert.equal(activity.summary.busiestWorkspace.key, "inbox");
+  assert.equal(activity.recentFiles[0].path, "Journal/2026-06-07.md");
   assert.equal(activity.heatmap.cells.length, 7);
   assert.equal(activity.heatmap.columns, 1);
   assert.equal(activity.heatmap.total, 3);
   assert(activity.heatmap.cells.some((cell) => cell.date === "2026-06-07" && cell.count > 0));
-  assert.equal(WorkbenchDerive.getActivityWorkspaceForPath("wiki/项目/项目-index.md").key, "project");
-  assert.equal(WorkbenchDerive.getActivityWorkspaceForPath("📡 外部输入/播客/a.md").key, "external");
+  assert.equal(WorkbenchDerive.getActivityWorkspaceForPath("Wiki/Projects/index.md").key, "projects");
+  assert.equal(WorkbenchDerive.getActivityWorkspaceForPath("Projects/client-a.md").key, "projects");
 });
 
 run("parseDailyDigest extracts daily completion, plans, Agent, and AI summary", () => {
@@ -474,7 +502,7 @@ title: "2026-06-07"
 ## 今日完成
 
 - [x] 发布 Agent 踩坑实录
-- [x] [[产出/草稿/post|草稿]] 回流
+- [x] [[Content/Drafts/post|草稿]] 回流
 
 ## 明日计划
 
@@ -486,7 +514,7 @@ title: "2026-06-07"
 
 ## 🤖 AI 今日摘要
 
-### 今日产出
+### 今日输出
 - 工作台活跃镜头完成
 `);
 
@@ -494,11 +522,11 @@ title: "2026-06-07"
   assert.equal(digest.isEmpty, false);
   assert.deepEqual(digest.sections.find((section) => section.key === "completed").items, [
     "发布 Agent 踩坑实录",
-    "[[产出/草稿/post|草稿]] 回流",
+    "[[Content/Drafts/post|草稿]] 回流",
   ]);
   assert.deepEqual(digest.sections.find((section) => section.key === "tomorrow").items, ["复盘渠道数据"]);
   assert.deepEqual(digest.sections.find((section) => section.key === "agent").items, ["Agent 已拉取素材包"]);
-  assert.deepEqual(digest.sections.find((section) => section.key === "ai").items, ["今日产出", "工作台活跃镜头完成"]);
+  assert.deepEqual(digest.sections.find((section) => section.key === "ai").items, ["今日输出", "工作台活跃镜头完成"]);
 });
 
 run("formatDate pads month and day to two digits", () => {

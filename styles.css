@@ -739,7 +739,7 @@
   min-width: 0;
 }
 
-.cw-main {
+.cw-content {
   min-width: 0;
 }
 
@@ -1464,6 +1464,17 @@
   font-size: 13px;
   font-weight: 720;
   margin-top: 12px;
+}
+
+.cw-agent-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cw-agent-actions .cw-btn {
+  justify-content: center;
+  width: 100%;
 }
 
 .cw-agent-compact {
