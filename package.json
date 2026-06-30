@@ -1,0 +1,10 @@
+{
+  "name": "chubby-wiki-workbench",
+  "version": "0.6.12",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "check": "node --check main.js && node --check dashboard-logic.js && node --check task-logic.js && node --check workbench-derive.js && node --check date-utils.js && node --check test/workbench-logic.test.js",
+    "test": "node test/workbench-logic.test.js"
+  }
+}
