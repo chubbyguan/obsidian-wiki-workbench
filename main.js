@@ -10,7 +10,7 @@ const {
 } = require("obsidian");
 const nodePath = require("path");
 
-const WORKBENCH_PLUGIN_ID = "chubby-wiki-workbench";
+const WORKBENCH_PLUGIN_ID = "wiki-workbench";
 
 function requireWorkbenchModule(fileName) {
   const adapter = globalThis.app && globalThis.app.vault && globalThis.app.vault.adapter;
@@ -53,15 +53,15 @@ const {
   DEFAULT_GBRAIN_LINK_DENSITY_WARN: GBRAIN_LINK_DENSITY_WARN,
 } = WorkbenchDerive;
 
-const VIEW_TYPE = "chubby-wiki-workbench-view";
+const VIEW_TYPE = "wiki-workbench-view";
 const DEFAULT_SETTINGS = {
   dashboardFile: "dashboard.md",
-  dailyFolder: "日记",
-  weeklyFolder: "规划/周计划",
-  monthlyFolder: "规划/月计划",
-  contentFlowPath: "wiki/✍️ 内容创作/流程/v7-workflow.md",
-  projectIndexPath: "wiki/项目/项目-index.md",
-  healthCachePath: "产出/工作台数据/vault-health.json",
+  dailyFolder: "Journal",
+  weeklyFolder: "Plans/Weekly",
+  monthlyFolder: "Plans/Monthly",
+  contentFlowPath: "Wiki/Content/workflow.md",
+  projectIndexPath: "Wiki/Projects/index.md",
+  healthCachePath: "Workbench/vault-health.json",
   autoAppendCompletedToDaily: true,
   completionLogHeading: "今日完成",
   workbenchTheme: "day",
@@ -76,7 +76,7 @@ const SECTION_TYPES = [
 
 const SECTION_DESCRIPTIONS = {
   focus: "先确认今天真正要推进什么",
-  todo: "工作、项目、Hermes 协作待办",
+  todo: "工作、项目、Agent 协作待办",
   content: "选题、草稿、发布、回流",
   life: "健康、家庭、个人行政、小习惯",
 };
@@ -92,13 +92,13 @@ const WORKBENCH_THEMES = [
   { key: "apple", label: "苹果", icon: "apple" },
 ];
 
-module.exports = class ChubbyWikiWorkbenchPlugin extends Plugin {
+module.exports = class WikiWorkbenchPlugin extends Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
     this.registerView(VIEW_TYPE, (leaf) => new WorkbenchView(leaf, this));
 
-    this.addRibbonIcon("layout-dashboard", "Chubby Wiki Workbench", () => {
+    this.addRibbonIcon("layout-dashboard", "Wiki Workbench", () => {
       this.activateView();
     });
 
@@ -392,7 +392,7 @@ class WorkbenchView extends ItemView {
   }
 
   getDisplayText() {
-    return "Chubby 工作台";
+    return "Wiki 工作台";
   }
 
   getIcon() {
@@ -454,7 +454,7 @@ class WorkbenchView extends ItemView {
 
     const root = this.containerEl.children[1];
     root.empty();
-    root.addClass("chubby-workbench-root");
+    root.addClass("wiki-workbench-root");
     this.applyTheme(root);
 
     this.renderHero(root);
@@ -482,9 +482,9 @@ class WorkbenchView extends ItemView {
     const hero = root.createDiv({ cls: "cw-hero" });
     const text = hero.createDiv({ cls: "cw-hero-text" });
     text.createDiv({ cls: "cw-eyebrow", text: "LLM WIKI · HERMES DAILY OPS" });
-    text.createEl("h1", { text: "Chubby Wiki Workbench" });
+    text.createEl("h1", { text: "Wiki Workbench" });
     text.createEl("p", {
-      text: "每天打开先看这里：今天推进什么、Hermes 正在处理什么、内容卡在哪一步、生活事项有没有漏。",
+      text: "每天打开先看这里：今天推进什么、Agent 正在处理什么、内容卡在哪一步、生活事项有没有漏。",
     });
 
     const controls = hero.createDiv({ cls: "cw-hero-controls" });
@@ -613,7 +613,7 @@ class WorkbenchView extends ItemView {
   renderKnowledgeFlow(container) {
     const activity = this.activity || WorkbenchDerive.collectVaultActivity(this.app.vault.getMarkdownFiles());
     const byKey = activity.byKey || {};
-    const wikiWeek = ["external", "research", "graph", "creation", "project", "hermes", "wiki"]
+    const wikiWeek = ["external", "research", "graph", "creation", "project", "agent", "wiki"]
       .reduce((sum, key) => sum + (byKey[key] ? byKey[key].week : 0), 0);
     const steps = [
       ["素材库", byKey.source ? byKey.source.week : 0],
@@ -797,7 +797,7 @@ class WorkbenchView extends ItemView {
       const meta = row.createDiv({ cls: "cw-todo-row-meta" });
       meta.createSpan({ cls: "cw-mini-badge", text: `${stats.done}/${stats.total}` });
       if (stats.carryover > 0) meta.createSpan({ cls: "cw-mini-badge cw-mini-badge-carry", text: `续 ${stats.carryover}` });
-      if (stats.hermes > 0) meta.createSpan({ cls: "cw-mini-badge cw-mini-badge-violet", text: `H ${stats.hermes}` });
+      if (stats.agent > 0) meta.createSpan({ cls: "cw-mini-badge cw-mini-badge-violet", text: `H ${stats.agent}` });
       if (stats.waiting > 0) meta.createSpan({ cls: "cw-mini-badge cw-mini-badge-rose", text: `等 ${stats.waiting}` });
     }
   }
@@ -1071,7 +1071,7 @@ class WorkbenchView extends ItemView {
   }
 
   renderSidebar(sidebar) {
-    this.renderHermesStatus(sidebar);
+    this.renderAgentStatus(sidebar);
     this.renderWeekCalendar(sidebar);
     this.renderDailyDigest(sidebar);
     this.renderHealthLight(sidebar);
@@ -1118,24 +1118,24 @@ class WorkbenchView extends ItemView {
     await this.plugin.openPath(action.target);
   }
 
-  renderHermesStatus(sidebar) {
-    const groups = WorkbenchDerive.collectHermesTaskGroups(this.data);
+  renderAgentStatus(sidebar) {
+    const groups = WorkbenchDerive.collectAgentTaskGroups(this.data);
     const stats = {
-      hermes: groups.hermes.length,
+      agent: groups.agent.length,
       waiting: groups.waiting.length,
       done: groups.done.length,
       blocked: groups.blocked.length,
     };
     const box = sidebar.createDiv({ cls: "cw-side-box" });
-    box.createEl("h3", { text: "Hermes 协作" });
+    box.createEl("h3", { text: "Agent 协作" });
     const metrics = box.createDiv({ cls: "cw-side-metrics" });
-    this.renderSideMetric(metrics, String(stats.hermes), "待执行", () => this.jumpToHermesGroup(groups.hermes));
-    this.renderSideMetric(metrics, String(stats.waiting), "等确认", () => this.jumpToHermesGroup(groups.waiting));
-    this.renderSideMetric(metrics, String(stats.done), "已完成", () => this.jumpToHermesGroup(groups.done));
-    this.renderSideMetric(metrics, String(stats.blocked), "阻塞", () => this.jumpToHermesGroup(groups.blocked));
-    const compact = box.createDiv({ cls: "cw-hermes-compact" });
-    compact.createDiv({ text: "Hermes 明细已合并到主区域的 Todo 列表。" });
-    const jump = compact.createDiv({ cls: "cw-hermes-jump", attr: { role: "button", tabindex: "0" } });
+    this.renderSideMetric(metrics, String(stats.agent), "待执行", () => this.jumpToAgentGroup(groups.agent));
+    this.renderSideMetric(metrics, String(stats.waiting), "等确认", () => this.jumpToAgentGroup(groups.waiting));
+    this.renderSideMetric(metrics, String(stats.done), "已完成", () => this.jumpToAgentGroup(groups.done));
+    this.renderSideMetric(metrics, String(stats.blocked), "阻塞", () => this.jumpToAgentGroup(groups.blocked));
+    const compact = box.createDiv({ cls: "cw-agent-compact" });
+    compact.createDiv({ text: "Agent 明细已合并到主区域的 Todo 列表。" });
+    const jump = compact.createDiv({ cls: "cw-agent-jump", attr: { role: "button", tabindex: "0" } });
     jump.createSpan({ text: "查看 Todo 列表" });
     jump.addEventListener("click", () => this.scrollToSection("todo"));
     jump.addEventListener("keydown", (event) => {
@@ -1144,33 +1144,33 @@ class WorkbenchView extends ItemView {
         this.scrollToSection("todo");
       }
     });
-    box.createDiv({ cls: "cw-hermes-note", text: this.getHermesSuggestion(stats) });
+    box.createDiv({ cls: "cw-agent-note", text: this.getAgentSuggestion(stats) });
   }
 
-  renderHermesQueue(container, groups) {
-    const queue = container.createDiv({ cls: "cw-hermes-queue" });
-    this.renderHermesGroup(queue, "Hermes 队列", groups.hermes, "当前没有 Hermes 待执行任务");
-    this.renderHermesGroup(queue, "等你确认", groups.waiting, "当前没有等待确认项");
-    this.renderHermesGroup(queue, "已完成", groups.done, "还没有记录 Hermes 已完成任务");
+  renderAgentQueue(container, groups) {
+    const queue = container.createDiv({ cls: "cw-agent-queue" });
+    this.renderAgentGroup(queue, "Agent 队列", groups.agent, "当前没有 Agent 待执行任务");
+    this.renderAgentGroup(queue, "等你确认", groups.waiting, "当前没有等待确认项");
+    this.renderAgentGroup(queue, "已完成", groups.done, "还没有记录 Agent 已完成任务");
   }
 
-  renderHermesGroup(container, title, items, emptyText) {
-    const group = container.createDiv({ cls: "cw-hermes-group" });
-    const head = group.createDiv({ cls: "cw-hermes-group-head" });
+  renderAgentGroup(container, title, items, emptyText) {
+    const group = container.createDiv({ cls: "cw-agent-group" });
+    const head = group.createDiv({ cls: "cw-agent-group-head" });
     head.createEl("h4", { text: title });
     head.createSpan({ text: `${items.length}` });
     if (items.length === 0) {
-      group.createDiv({ cls: "cw-hermes-empty", text: emptyText });
+      group.createDiv({ cls: "cw-agent-empty", text: emptyText });
       return;
     }
     for (const item of items.slice(0, 4)) {
       const task = group.createDiv({
-        cls: `cw-hermes-task ${item.task.checked ? "is-done" : ""}`,
+        cls: `cw-agent-task ${item.task.checked ? "is-done" : ""}`,
         attr: { role: "button", tabindex: "0", title: TaskLogic.cleanTaskLabel(item.task.text) },
       });
-      const text = task.createDiv({ cls: "cw-hermes-task-title" });
+      const text = task.createDiv({ cls: "cw-agent-task-title" });
       renderInline(text, TaskLogic.cleanTaskLabel(item.task.text), (target) => this.plugin.openPath(target));
-      task.createDiv({ cls: "cw-hermes-task-meta", text: `${item.card.title} · ${item.task.checked ? "完成" : item.label}` });
+      task.createDiv({ cls: "cw-agent-task-meta", text: `${item.card.title} · ${item.task.checked ? "完成" : item.label}` });
       task.addEventListener("click", () => this.scrollToCard(item.card));
       task.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -1180,7 +1180,7 @@ class WorkbenchView extends ItemView {
       });
     }
     if (items.length > 4) {
-      group.createDiv({ cls: "cw-hermes-more", text: `还有 ${items.length - 4} 项在下方卡片里` });
+      group.createDiv({ cls: "cw-agent-more", text: `还有 ${items.length - 4} 项在下方卡片里` });
     }
   }
 
@@ -1198,7 +1198,7 @@ class WorkbenchView extends ItemView {
       return;
     }
     if (digest.isEmpty) {
-      box.createDiv({ cls: "cw-side-hint", text: "今日日记已有文件，但还没有完成、计划或 Hermes 复盘内容。" });
+      box.createDiv({ cls: "cw-side-hint", text: "今日日记已有文件，但还没有完成、计划或 Agent 复盘内容。" });
       return;
     }
     for (const section of digest.visibleSections.slice(0, 3)) {
@@ -1300,7 +1300,7 @@ class WorkbenchView extends ItemView {
     item.addEventListener("click", () => callback && callback());
   }
 
-  jumpToHermesGroup(items) {
+  jumpToAgentGroup(items) {
     if (items && items.length > 0) {
       this.scrollToCard(items[0].card);
       return;
@@ -1395,7 +1395,7 @@ class WorkbenchView extends ItemView {
       return {
         kind,
         title: "遗留任务处理",
-        subtitle: "这些任务从之前的工作日滚入今天，建议逐项决定继续、延期、取消或交给 Hermes。",
+        subtitle: "这些任务从之前的工作日滚入今天，建议逐项决定继续、延期、取消或交给 Agent。",
         emptyText: "当前没有遗留任务",
       };
     }
@@ -1468,12 +1468,12 @@ class WorkbenchView extends ItemView {
     new Notice(outcome && outcome.changed ? `已延期到 ${date}` : "任务已变化，请刷新后再试");
   }
 
-  async delegateTaskToHermes(card, task) {
+  async delegateTaskToAgent(card, task) {
     const outcome = await this.mutateTask(card, task, (latestTask) => ({
       checked: false,
       text: TaskLogic.delegateTaskText(latestTask.text),
     }));
-    new Notice(outcome && outcome.changed ? "已交给 Hermes" : "任务已变化，请刷新后再试");
+    new Notice(outcome && outcome.changed ? "已交给 Agent" : "任务已变化，请刷新后再试");
   }
 
   async cancelTaskFromInbox(card, task) {
@@ -1502,9 +1502,9 @@ class WorkbenchView extends ItemView {
     });
   }
 
-  getHermesSuggestion(stats) {
-    if (stats.waiting > 0) return "建议：先处理等你确认的事项，Hermes 才能继续向下推进。";
-    if (stats.hermes > 0) return "建议：把可交给 Hermes 的素材扫描、拆稿和复盘先派出去。";
+  getAgentSuggestion(stats) {
+    if (stats.waiting > 0) return "建议：先处理等你确认的事项，Agent 才能继续向下推进。";
+    if (stats.agent > 0) return "建议：把可交给 Agent 的素材扫描、拆稿和复盘先派出去。";
     return "建议：先完成今日行动，再把完成情况写回日记。";
   }
 
@@ -1699,8 +1699,8 @@ class WorkbenchTaskListModal extends Modal {
         await this.view.deferTask(item.card, item.task);
         this.close();
       });
-      this.createAction(actions, "交给 Hermes", "send", async () => {
-        await this.view.delegateTaskToHermes(item.card, item.task);
+      this.createAction(actions, "交给 Agent", "send", async () => {
+        await this.view.delegateTaskToAgent(item.card, item.task);
         this.close();
       });
       this.createAction(actions, "取消", "circle-slash", async () => {
@@ -1767,15 +1767,15 @@ class WorkbenchSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Chubby Wiki Workbench" });
+    containerEl.createEl("h2", { text: "Wiki Workbench" });
 
     this.addTextSetting("工作台文件", "dashboard.md", "dashboardFile");
-    this.addTextSetting("日记目录", "日记", "dailyFolder");
-    this.addTextSetting("周计划目录", "规划/周计划", "weeklyFolder");
-    this.addTextSetting("月计划目录", "规划/月计划", "monthlyFolder");
-    this.addTextSetting("内容流程", "wiki/✍️ 内容创作/流程/v7-workflow.md", "contentFlowPath");
-    this.addTextSetting("项目索引", "wiki/项目/项目-index.md", "projectIndexPath");
-    this.addTextSetting("健康缓存", "产出/工作台数据/vault-health.json", "healthCachePath");
+    this.addTextSetting("日记目录", "Journal", "dailyFolder");
+    this.addTextSetting("周计划目录", "Plans/Weekly", "weeklyFolder");
+    this.addTextSetting("月计划目录", "Plans/Monthly", "monthlyFolder");
+    this.addTextSetting("内容流程", "Wiki/Content/workflow.md", "contentFlowPath");
+    this.addTextSetting("项目索引", "Wiki/Projects/index.md", "projectIndexPath");
+    this.addTextSetting("健康缓存", "Workbench/vault-health.json", "healthCachePath");
     this.addTextSetting("完成记录标题", "今日完成", "completionLogHeading");
     this.addThemeSetting();
     this.addToggleSetting("勾选完成后写入今日日记", "autoAppendCompletedToDaily");
@@ -2041,33 +2041,33 @@ function createDefaultDashboardMarkdown() {
   const today = formatDate(new Date());
   return `---
 dashboard: true
-workbench: chubby
+workbench: wiki
 workbenchDate: "${today}"
 version: 0.6
 banner:
   quote: "该做的在上，该想的在下。"
-  author: "Chubby"
+  author: "Wiki"
 quickActions:
   - name: "今日日记"
     icon: "calendar"
     type: file
-    target: "日记/{{today}}.md"
+    target: "Journal/{{today}}.md"
   - name: "本周计划"
     icon: "calendar-days"
     type: file
-    target: "规划/周计划/{{week}}.md"
+    target: "Plans/Weekly/{{week}}.md"
   - name: "本月计划"
     icon: "calendar-range"
     type: file
-    target: "规划/月计划/{{month}}.md"
+    target: "Plans/Monthly/{{month}}.md"
   - name: "内容流程"
     icon: "pen-tool"
     type: file
-    target: "wiki/✍️ 内容创作/流程/v7-workflow.md"
+    target: "Wiki/Content/workflow.md"
   - name: "项目索引"
     icon: "folder-kanban"
     type: file
-    target: "wiki/项目/项目-index.md"
+    target: "Wiki/Projects/index.md"
 columns:
   - name: 今日行动
     color: "#d6a646"
@@ -2090,7 +2090,7 @@ id: focus-today
 type: focus
 - [ ] 从本周计划里确认今天最重要的 1 件事
 - [ ] 打开今日日记，写下今天的判断
-- [ ] 晚上让 Hermes 回填今日复盘
+- [ ] 晚上让 Agent 回填今日复盘
 
 ## Todo 列表
 
@@ -2099,17 +2099,17 @@ id: work-follow-up
 type: task
 - [ ] 5 月复盘填写 📅 ${today}
 
-### Hermes 待办
-id: hermes-todo
+### Agent 待办
+id: agent-todo
 type: task
-- [ ] [Hermes] 根据周计划刷新今日行动
+- [ ] [Agent] 根据周计划刷新今日行动
 
 ## 内容生成
 
 ### 本周内容流水线
 id: content-week
 type: content
-link: [[规划/周计划/{{week}}]]
+link: [[Plans/Weekly/{{week}}]]
 status: planning
 next: 确认本周主线稿件
 - [ ] 公众号长文推进
@@ -2159,7 +2159,7 @@ weather:
 
 - [ ]
 
-## Hermes 复盘
+## Agent 复盘
 
 `;
 }

@@ -1,4 +1,4 @@
-.chubby-workbench-root {
+.wiki-workbench-root {
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -36,7 +36,7 @@
   padding: 28px;
 }
 
-.chubby-workbench-root.cw-theme-day {
+.wiki-workbench-root.cw-theme-day {
   --cw-bg: linear-gradient(180deg, #f7f4ee 0%, #eef2f8 100%);
   --cw-panel: rgba(255, 252, 246, 0.94);
   --cw-panel-soft: #f8f4ec;
@@ -47,7 +47,7 @@
   --cw-shadow: 0 18px 42px rgba(45, 39, 28, 0.1);
 }
 
-.chubby-workbench-root.cw-theme-night {
+.wiki-workbench-root.cw-theme-night {
   --cw-bg: radial-gradient(circle at 20% 0%, rgba(82, 94, 130, 0.24), transparent 32%), #111318;
   --cw-panel: #1a1f29;
   --cw-panel-soft: #222836;
@@ -76,7 +76,7 @@
     radial-gradient(circle at 78% 55%, rgba(240, 141, 160, 0.18), transparent 28%);
 }
 
-.chubby-workbench-root.cw-theme-island {
+.wiki-workbench-root.cw-theme-island {
   --cw-bg: linear-gradient(180deg, #e6f7f8 0%, #fff7df 62%, #f4f1e5 100%);
   --cw-panel: rgba(255, 254, 245, 0.93);
   --cw-panel-soft: #e9f6ef;
@@ -103,7 +103,7 @@
     radial-gradient(circle at 76% 56%, rgba(220, 116, 104, 0.2), transparent 28%);
 }
 
-.chubby-workbench-root.cw-theme-magazine {
+.wiki-workbench-root.cw-theme-magazine {
   --cw-bg: #f4f1ea;
   --cw-panel: #fffdf8;
   --cw-panel-soft: #ece7dd;
@@ -131,7 +131,7 @@
     linear-gradient(90deg, rgba(201, 53, 53, 0.16), rgba(34, 93, 168, 0.08));
 }
 
-.chubby-workbench-root.cw-theme-cyberpunk {
+.wiki-workbench-root.cw-theme-cyberpunk {
   --cw-bg: radial-gradient(circle at 18% 0%, rgba(255, 45, 146, 0.22), transparent 34%), linear-gradient(180deg, #070912 0%, #11122a 100%);
   --cw-panel: rgba(15, 18, 37, 0.94);
   --cw-panel-soft: #171a3d;
@@ -160,7 +160,7 @@
     radial-gradient(circle at 76% 55%, rgba(255, 45, 146, 0.28), transparent 30%);
 }
 
-.chubby-workbench-root.cw-theme-apple {
+.wiki-workbench-root.cw-theme-apple {
   --cw-bg: linear-gradient(180deg, #f6f8fb 0%, #eef1f6 100%);
   --cw-panel: rgba(255, 255, 255, 0.78);
   --cw-panel-soft: rgba(246, 248, 251, 0.9);
@@ -1442,7 +1442,7 @@
   font-weight: 850;
 }
 
-.cw-hermes-note {
+.cw-agent-note {
   border-left: 4px solid var(--cw-violet);
   background: color-mix(in srgb, var(--cw-violet), transparent 88%);
   border-radius: 7px;
@@ -1454,7 +1454,7 @@
   margin-top: 12px;
 }
 
-.cw-hermes-compact {
+.cw-agent-compact {
   border-top: 1px dashed var(--cw-border);
   color: var(--cw-muted);
   display: grid;
@@ -1466,7 +1466,7 @@
   padding-top: 10px;
 }
 
-.cw-hermes-jump {
+.cw-agent-jump {
   border: 1px solid color-mix(in srgb, var(--cw-violet), transparent 66%);
   border-radius: 8px;
   background: color-mix(in srgb, var(--cw-violet), transparent 90%);
@@ -1478,23 +1478,23 @@
   text-align: center;
 }
 
-.cw-hermes-jump:hover {
+.cw-agent-jump:hover {
   border-color: var(--cw-violet);
   color: var(--cw-violet);
 }
 
-.cw-hermes-queue {
+.cw-agent-queue {
   display: grid;
   gap: 10px;
   margin-top: 12px;
 }
 
-.cw-hermes-group {
+.cw-agent-group {
   border-top: 1px dashed var(--cw-border);
   padding-top: 12px;
 }
 
-.cw-hermes-group-head {
+.cw-agent-group-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1502,13 +1502,13 @@
   margin-bottom: 7px;
 }
 
-.cw-hermes-group-head h4 {
+.cw-agent-group-head h4 {
   margin: 0;
   font-size: 13px;
   letter-spacing: 0;
 }
 
-.cw-hermes-group-head span {
+.cw-agent-group-head span {
   border: 1px solid color-mix(in srgb, var(--cw-violet), transparent 70%);
   border-radius: 999px;
   background: color-mix(in srgb, var(--cw-violet), transparent 88%);
@@ -1520,7 +1520,7 @@
   text-align: center;
 }
 
-.cw-hermes-task {
+.cw-agent-task {
   border: 1px solid var(--cw-border);
   border-radius: 8px;
   background: var(--cw-control);
@@ -1534,17 +1534,17 @@
   width: 100%;
 }
 
-.cw-hermes-task:hover {
+.cw-agent-task:hover {
   border-color: var(--text-accent);
   color: var(--text-accent);
 }
 
-.cw-hermes-task.is-done .cw-hermes-task-title {
+.cw-agent-task.is-done .cw-agent-task-title {
   color: var(--cw-muted);
   text-decoration: line-through;
 }
 
-.cw-hermes-task-title {
+.cw-agent-task-title {
   display: block;
   font-size: 12px;
   font-weight: 820;
@@ -1554,21 +1554,21 @@
   word-break: break-word;
 }
 
-.cw-hermes-task-meta {
+.cw-agent-task-meta {
   display: block;
   margin-top: 4px;
 }
 
-.cw-hermes-task-meta,
-.cw-hermes-empty,
-.cw-hermes-more {
+.cw-agent-task-meta,
+.cw-agent-empty,
+.cw-agent-more {
   color: var(--cw-muted);
   font-size: 11px;
   font-weight: 760;
   line-height: 1.35;
 }
 
-.cw-hermes-empty {
+.cw-agent-empty {
   border: 1px dashed var(--cw-border);
   border-radius: 8px;
   padding: 8px;
@@ -2001,7 +2001,7 @@
 }
 
 @media (max-width: 900px) {
-  .chubby-workbench-root {
+  .wiki-workbench-root {
     padding: 16px;
   }
 
@@ -2074,7 +2074,7 @@
   }
 }
 
-.chubby-workbench-root .cw-hero {
+.wiki-workbench-root .cw-hero {
   display: flex !important;
   position: relative !important;
 }

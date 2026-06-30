@@ -1,162 +1,135 @@
-# Chubby Wiki Workbench
+# Wiki Workbench for Obsidian
 
-`Chubby Wiki Workbench` 是给 `wiki-guanbuGuo` vault 使用的 Obsidian 日常工作台插件。它不改变现有知识库结构，而是把 `dashboard.md` 渲染成一个可交互的执行驾驶舱，用来管理今日行动、Todo、内容生成、生活待办、Hermes 协作任务和知识库活跃状态。
+`Wiki Workbench` is a desktop Obsidian plugin that turns a Markdown dashboard file into an interactive daily cockpit. It is designed for personal knowledge bases that use plain Markdown for tasks, journals, plans, content pipelines, and agent-assisted workflows.
 
-这个插件当前是 **desktop-only**、**no-build CommonJS** 形态：源码可以直接放在 Obsidian 插件目录里运行，不需要 TypeScript 编译或打包。
+The plugin keeps your vault structure intact. It reads and writes normal Markdown files instead of introducing a database or external service.
 
-## 功能
+## Features
 
-- 今日驾驶舱：今日行动、Todo、内容生成、生活待办四个核心模块。
-- 今日行动：首页显示“今日最重要的三件事”和最近完成项。
-- Todo 管理：支持勾选、编辑、删除、拖拽排序、添加任务。
-- Hermes 协作：识别 `[owner:Hermes]`、`[status:waiting-confirm]`、阻塞、延期、取消等任务状态。
-- 任务 inbox：汇总未完成、遗留、已完成任务，并支持继续、延期、取消、交给 Hermes。
-- 内容流水线：展示选题、调研、素材包、草稿、定稿、发布、回流阶段。
-- 知识库活跃镜头：统计素材库、wiki、产出、日记、规划等工作区最近活跃情况。
-- 91 天热力图：快速查看知识库沉淀节奏。
-- 日 rollover：每天自动切换工作台日期，清理今日完成、保留内容流水线、重置健康习惯、给未完成任务打 `[遗留:YYYY-MM-DD]`。
-- 日记回流：任务完成时可写入 `日记/YYYY-MM-DD.md` 的 `## 今日完成`。
+- Daily cockpit for focus work, Todo items, content production, and life tasks.
+- Interactive task actions: check, edit, delete, add, reorder, defer, cancel, and delegate to an agent.
+- Agent workflow tracking through owner/status metadata such as `[owner:Agent]` and `[status:waiting-confirm]`.
+- Carryover inbox for unfinished tasks from previous days.
+- Daily rollover: clears completed daily work, keeps content pipelines, resets recurring habits, and marks unfinished tasks with `[carryover:YYYY-MM-DD]`.
+- Content pipeline view for idea, research, material pack, draft, edit, publish, and archive stages.
+- Vault activity lens with workspace stats, recent files, and a 91-day activity heatmap.
+- Journal backfill: completed tasks can be appended to a daily note.
+- Compatibility with emoji-style completed tasks such as `- ✅ 08:16 Sync completed`.
 
-## 安装
+## Install
 
-把仓库内容放到 Obsidian vault 的插件目录：
+Clone or copy this repository into an Obsidian vault plugin directory:
 
 ```bash
-mkdir -p /path/to/vault/.obsidian/plugins/chubby-wiki-workbench
-cp -R ./* /path/to/vault/.obsidian/plugins/chubby-wiki-workbench/
+mkdir -p /path/to/vault/.obsidian/plugins/wiki-workbench
+cp -R ./* /path/to/vault/.obsidian/plugins/wiki-workbench/
 ```
 
-在 Obsidian 里打开：
+Then enable it in Obsidian:
 
-1. `Settings -> Community plugins`
-2. 关闭 Safe mode（如有）
-3. 启用 `Chubby Wiki Workbench`
-4. 点击左侧 ribbon 的工作台图标，或运行命令 `打开 Wiki 工作台`
+1. Open `Settings -> Community plugins`.
+2. Enable community plugins if needed.
+3. Enable `Wiki Workbench`.
+4. Open the workbench from the ribbon icon or the command palette.
 
-在当前 vault 中，插件路径是：
+## Default Files
 
-```text
-/Users/guandeyu/Documents/wiki-guanbuGuo/.obsidian/plugins/chubby-wiki-workbench
-```
+The plugin defaults can be changed in the plugin settings tab.
 
-## 数据文件
-
-默认读取和写入：
-
-| 用途 | 默认路径 |
+| Purpose | Default path |
 | --- | --- |
-| 工作台数据 | `dashboard.md` |
-| 日记 | `日记/YYYY-MM-DD.md` |
-| 周计划 | `规划/周计划/YYYY-Www.md` |
-| 月计划 | `规划/月计划/YYYY-MM.md` |
-| 内容流程 | `wiki/✍️ 内容创作/流程/v7-workflow.md` |
-| 项目索引 | `wiki/项目/项目-index.md` |
-| 健康缓存 | `产出/工作台数据/vault-health.json` |
+| Dashboard source | `dashboard.md` |
+| Daily notes | `Journal/YYYY-MM-DD.md` |
+| Weekly plans | `Plans/Weekly/YYYY-Www.md` |
+| Monthly plans | `Plans/Monthly/YYYY-MM.md` |
+| Content workflow | `Wiki/Content/workflow.md` |
+| Project index | `Wiki/Projects/index.md` |
+| Health cache | `Workbench/vault-health.json` |
 
-`data.json` 是 Obsidian 插件本地设置文件，包含当前主题、路径配置等个人设置，不应该提交到公开/独立插件仓库。
+`data.json` is an Obsidian local settings file. Do not publish it if it contains personal paths or preferences.
 
-## Dashboard 协议
+## Dashboard Format
 
-`dashboard.md` 使用普通 Markdown 作为数据源。二级标题是模块，三级标题是卡片，任务使用 Markdown checkbox。
+`dashboard.md` is plain Markdown. Level 2 headings are sections, level 3 headings are cards, and tasks use Markdown checkboxes.
 
 ```markdown
-## 今日行动
+## Focus
 
-### 今日最重要的三件事
+### Top Three
 id: focus-today
 type: focus
-- [ ] 确认今天最重要的一件事
-- [ ] 推进当前主线稿件
-- [ ] 晚上回填复盘
+- [ ] Pick the most important task for today
+- [ ] Move the main content draft forward
+- [ ] Write a short daily review
 
-### 今日完成
+### Completed Today
 id: today-done
 type: focus
-- [x] 发布一篇内容
+- [x] Published a note
 
-## Todo 列表
+## Todo
 
-### Hermes 队列
-id: hermes-queue
+### Agent Queue
+id: agent-queue
 type: task
-- [ ] [owner:Hermes] [status:todo] 拉取本周素材包
-- [ ] [owner:关德宇] [status:waiting-confirm] 审核选题
+- [ ] [owner:Agent] [status:todo] Prepare a source summary
+- [ ] [owner:User] [status:waiting-confirm] Review topic candidates
 ```
 
-任务元数据约定：
+Task metadata examples:
 
 ```markdown
-- [ ] [owner:Hermes] [status:todo] 生成本周数据复盘报告
-- [ ] [owner:关德宇] [status:waiting-confirm] 审核 Hermes 推荐的 5 个选题
-- [ ] 阻塞：缺少原始素材链接
-- [ ] 旧任务 [遗留:2026-06-29]
-- [ ] 延期任务 📅 2026-07-01
+- [ ] [owner:Agent] [status:todo] Generate a weekly review
+- [ ] [owner:User] [status:waiting-confirm] Review the agent output
+- [ ] Blocked: missing source links
+- [ ] Old task [carryover:2026-06-29]
+- [ ] Deferred task 📅 2026-07-01
 ```
 
-兼容 Hermes/cron 写入的完成格式：
+Emoji-style completed tasks are also parsed:
 
 ```markdown
-- ✅ 08:16 笔记同步完成
-- ☑ 知识库批量处理完成
-- ✔ 18:00 日记补写完成
+- ✅ 08:16 Sync completed
+- ☑ Batch processing completed
+- ✔ 18:00 Journal backfill completed
 ```
 
-这些 emoji 完成项会被解析为已完成任务；如果在 UI 里编辑或取消勾选，会被规范化写回为 checkbox 任务。
+If a task appears directly under a section without a card heading, the parser creates an implicit `Ungrouped Tasks` card so the task is not dropped.
 
-如果某个 `##` 模块下面直接出现任务、但没有 `###` 卡片标题，插件会自动生成一个 `未分组任务` 卡片承接这些任务，避免任务被忽略。
-
-## 文件结构
+## Files
 
 ```text
-README.md                    插件说明
-manifest.json                Obsidian 插件 manifest
-package.json                 Node 测试脚本
-main.js                      插件入口、渲染、命令、弹窗、vault 写回
-dashboard-logic.js           dashboard markdown 解析、插入、rollover、任务行写回
-task-logic.js                任务元数据、标签清理、匹配、排序、状态操作
-workbench-derive.js          派生统计、内容流水线、健康状态、活跃镜头
-date-utils.js                日期工具
-styles.css                   布局与主题
-test/workbench-logic.test.js 核心逻辑测试
+README.md                    Plugin documentation
+manifest.json                Obsidian plugin manifest
+package.json                 Node test scripts
+main.js                      Plugin lifecycle, rendering, commands, modals, vault writes
+dashboard-logic.js           Dashboard parsing, task insertion, rollover, task-line writes
+task-logic.js                Task metadata, label cleanup, matching, sorting, status actions
+workbench-derive.js          Derived stats, pipeline state, health state, activity lens
+date-utils.js                Date helpers
+styles.css                   Layout and themes
+test/workbench-logic.test.js Core logic tests
 ```
 
-## 验证
+## Verify
 
-在插件目录或独立仓库目录运行：
+Run from the plugin directory:
 
 ```bash
 npm test
 npm run check
 ```
 
-在 `wiki-guanbuGuo` vault 根目录运行 Obsidian DOM smoke test：
+For an Obsidian DOM smoke test, use your own Obsidian automation setup or manually verify that:
 
-```bash
-tools/obsidian_workbench_cli_check.sh
-```
+- the plugin loads without console errors
+- the workbench view opens from the command palette
+- the dashboard renders
+- task check/edit/add actions update `dashboard.md`
 
-这个脚本会：
+## Publishing Notes
 
-- 启动或连接 Obsidian
-- reload `chubby-wiki-workbench`
-- 打开工作台视图
-- 检查 DOM 是否 ready
-- 输出 `obsidian dev:errors`
-- 保存截图到 `产出/工作台设计/chubby-workbench-cli-check.png`
-
-也可以手动验证：
-
-```bash
-open -a Obsidian /Users/guandeyu/Documents/wiki-guanbuGuo
-obsidian plugin:reload id=chubby-wiki-workbench
-obsidian command id=chubby-wiki-workbench:open-workbench
-obsidian eval code="(() => ({ root: !!document.querySelector('.chubby-workbench-root'), summaryButtons: document.querySelectorAll('.cw-summary-jump').length }))()"
-obsidian dev:errors
-```
-
-## 发布范围
-
-独立 GitHub 仓库只应该包含插件运行所需文件：
+Files suitable for a public repository:
 
 - `README.md`
 - `manifest.json`
@@ -170,23 +143,22 @@ obsidian dev:errors
 - `test/workbench-logic.test.js`
 - `.gitignore`
 
-不要提交：
+Do not publish:
 
 - `data.json`
-- vault 里的 `dashboard.md`
-- vault 的素材库、wiki、日记、规划、产出内容
-- `.obsidian` 其他插件或用户设置
+- your personal `dashboard.md`
+- vault content such as journals, source material, drafts, account notes, or private plans
+- other `.obsidian` user settings
 
-## 当前状态
+## Status
 
-- 版本：`0.6.12`
-- 运行形态：no-build CommonJS
-- Obsidian：desktop-only
-- 测试：Node 逻辑测试 + Obsidian DOM smoke test
-- 主仓库：`https://github.com/chubbyguan/chubby-wiki-workbench`
+- Version: `0.6.12`
+- Runtime: no-build CommonJS
+- Platform: Obsidian desktop
+- Tests: Node logic tests
 
-## 后续建议
+## Future Work
 
-- 如果插件继续增长，把 `main.js` 的渲染层继续拆分。
-- 如果要公开给别人使用，改造成 TypeScript + esbuild，并移除对特定 vault 路径的默认假设。
-- 如果要做正式发布，补 `versions.json` 和 release zip。
+- Split more rendering code out of `main.js`.
+- Add `versions.json` and release packaging for formal Obsidian plugin distribution.
+- Consider TypeScript and a small build step if the codebase continues to grow.

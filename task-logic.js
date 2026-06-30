@@ -7,7 +7,7 @@ function cleanTaskLabel(text) {
   return String(text || "")
     .replace(/\[owner:[^\]]+\]\s*/gi, "")
     .replace(/\[status:[^\]]+\]\s*/gi, "")
-    .replace(/\[Hermes\]\s*/g, "")
+    .replace(/\[Agent\]\s*/g, "")
     .replace(/\[等待我确认\]\s*/g, "")
     .replace(/\s*\[遗留:\d{4}-\d{2}-\d{2}\]/g, "")
     .replace(/📅\s*\d{4}-\d{2}-\d{2}/g, "")
@@ -29,14 +29,14 @@ function getTaskMeta(taskOrText) {
   let owner = rawOwner;
   let status = rawStatus;
 
-  if (!owner && text.includes("[Hermes]")) owner = "Hermes";
-  if (!owner && text.includes("[等待我确认]")) owner = "关德宇";
+  if (!owner && text.includes("[Agent]")) owner = "Agent";
+  if (!owner && text.includes("[等待我确认]")) owner = "User";
   if (!status && text.includes("[等待我确认]")) status = "waiting";
   if (!status && (text.includes("阻塞") || text.includes("卡住"))) status = "blocked";
   if (!status) status = "todo";
 
   const normalizedStatus = status.replace(/[_\s]+/g, "-");
-  const normalizedOwner = owner.toLowerCase() === "hermes" ? "Hermes" : owner;
+  const normalizedOwner = owner.toLowerCase() === "agent" ? "Agent" : owner;
   return {
     owner: normalizedOwner,
     status: normalizedStatus.includes("blocked") || normalizedStatus.includes("阻塞")
@@ -98,7 +98,7 @@ function cancelTaskText(text) {
 }
 
 function delegateTaskText(text) {
-  return upsertMeta(upsertMeta(text, "owner", "Hermes"), "status", "todo");
+  return upsertMeta(upsertMeta(text, "owner", "Agent"), "status", "todo");
 }
 
 function findMatchingTask(markdown, card, taskLike) {
@@ -139,7 +139,7 @@ function prioritizeTasks(tasks) {
       let value = 0;
       const meta = getTaskMeta(task);
       if (meta.status === "waiting") value -= 4;
-      if (meta.owner === "Hermes") value -= 3;
+      if (meta.owner === "Agent") value -= 3;
       if (task.text.includes("今天") || task.text.includes("发布")) value -= 2;
       if (meta.status === "blocked") value -= 5;
       return value;

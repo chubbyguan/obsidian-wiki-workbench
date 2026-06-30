@@ -82,7 +82,7 @@ function parseDashboard(markdown) {
 
     const taskMatch = line.match(/^(\s*)- \[([ xX])\]\s+(.*)$/);
     if (!taskMatch) {
-      // 也匹配 Hermes 写入的「- ✅ 时间 任务」格式,转成 checked=true 的 task
+      // 也匹配 Agent 写入的「- ✅ 时间 任务」格式,转成 checked=true 的 task
       const emojiMatch = line.match(/^(\s*)- (✅|☑|✔)\s+(.*)$/);
       if (emojiMatch) {
         currentCard.tasks.push({

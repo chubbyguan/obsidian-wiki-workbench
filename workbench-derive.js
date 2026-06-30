@@ -12,7 +12,7 @@ const DEFAULT_ACTIVITY_WORKSPACES = [
   { key: "graph", label: "知识图谱", paths: ["wiki/🧬 知识图谱"], role: "概念关系", color: "#7f79d8" },
   { key: "creation", label: "内容创作", paths: ["wiki/✍️ 内容创作"], role: "选题流程", color: "#d18b44" },
   { key: "project", label: "项目", paths: ["wiki/项目"], role: "项目状态", color: "#c96d78" },
-  { key: "hermes", label: "Hermes 记忆", paths: ["wiki/🧠 AI系统", "wiki/hermes-memory"], role: "协作记忆", color: "#7464d8" },
+  { key: "agent", label: "Agent 记忆", paths: ["wiki/🧠 AI系统", "wiki/agent-memory"], role: "协作记忆", color: "#7464d8" },
   { key: "output", label: "产出", path: "产出", role: "草稿发布", color: "#9b7ad6" },
   { key: "daily", label: "日记", path: "日记", role: "每日回流", color: "#5da86f" },
   { key: "plan", label: "规划", path: "规划", role: "计划节奏", color: "#cc8a56" },
@@ -31,7 +31,7 @@ const PIPELINE_STEPS = [
 ];
 
 function createEmptyStats() {
-  return { total: 0, done: 0, open: 0, hermes: 0, waiting: 0, blocked: 0, carryover: 0 };
+  return { total: 0, done: 0, open: 0, agent: 0, waiting: 0, blocked: 0, carryover: 0 };
 }
 
 function addStats(target, source) {
@@ -141,18 +141,18 @@ function collectTodayStats(data) {
   return stats;
 }
 
-function collectHermesTaskGroups(data) {
-  const groups = { hermes: [], waiting: [], blocked: [], done: [] };
+function collectAgentTaskGroups(data) {
+  const groups = { agent: [], waiting: [], blocked: [], done: [] };
   if (!data || !Array.isArray(data.sections)) return groups;
 
   for (const section of data.sections) {
     for (const card of section.cards) {
       for (const task of card.tasks) {
         const meta = TaskLogic.getTaskMeta(task);
-        const isHermes = meta.owner === "Hermes";
+        const isAgent = meta.owner === "Agent";
         const isWaiting = meta.status === "waiting";
         const isBlocked = meta.status === "blocked";
-        if (!isHermes && !isWaiting && !isBlocked) continue;
+        if (!isAgent && !isWaiting && !isBlocked) continue;
 
         const item = {
           section,
@@ -167,13 +167,13 @@ function collectHermesTaskGroups(data) {
         }
         if (isBlocked) groups.blocked.push(item);
         if (isWaiting) groups.waiting.push(item);
-        if (isHermes) groups.hermes.push(item);
+        if (isAgent) groups.agent.push(item);
       }
     }
   }
 
   const byPosition = (a, b) => a.task.lineIndex - b.task.lineIndex;
-  groups.hermes.sort(byPosition);
+  groups.agent.sort(byPosition);
   groups.waiting.sort(byPosition);
   groups.blocked.sort(byPosition);
   groups.done.sort((a, b) => b.task.lineIndex - a.task.lineIndex);
@@ -203,18 +203,18 @@ function collectCardStats(card) {
   const total = tasks.length;
   const done = tasks.filter((task) => task.checked).length;
   const openTasks = getOpenTasks(card);
-  let hermes = 0;
+  let agent = 0;
   let waiting = 0;
   let blocked = 0;
   let carryover = 0;
   for (const task of openTasks) {
     const meta = TaskLogic.getTaskMeta(task);
-    if (meta.owner === "Hermes") hermes++;
+    if (meta.owner === "Agent") agent++;
     if (meta.status === "waiting") waiting++;
     if (meta.status === "blocked") blocked++;
     if (TaskLogic.getCarryoverDate(task)) carryover++;
   }
-  return { total, done, open: total - done, hermes, waiting, blocked, carryover };
+  return { total, done, open: total - done, agent, waiting, blocked, carryover };
 }
 
 function getOpenTasks(card) {
@@ -294,8 +294,8 @@ function getTodoCardKind(card) {
   if (title.includes("治理") || text.includes("GBrain") || text.includes("健康检查")) {
     return { key: "governance", label: "治理", color: "#d6a646" };
   }
-  if (title.includes("Hermes") || text.includes("[Hermes]") || metas.some((meta) => meta.owner === "Hermes")) {
-    return { key: "hermes", label: "Hermes 队列", color: "#7464d8" };
+  if (title.includes("Agent") || text.includes("[Agent]") || metas.some((meta) => meta.owner === "Agent")) {
+    return { key: "agent", label: "Agent 队列", color: "#7464d8" };
   }
   return { key: "follow", label: "重点跟进", color: "#6690cc" };
 }
@@ -306,7 +306,7 @@ function getTaskBadge(task) {
   if (carryoverDate) return { label: `续 ${carryoverDate.slice(5)}`, cls: "cw-mini-badge-carry" };
   const meta = TaskLogic.getTaskMeta(task);
   if (meta.status === "waiting") return { label: "等确认", cls: "cw-mini-badge-rose" };
-  if (meta.owner === "Hermes") return { label: "Hermes", cls: "cw-mini-badge-violet" };
+  if (meta.owner === "Agent") return { label: "Agent", cls: "cw-mini-badge-violet" };
   if (task.text.includes("今天") || task.text.includes("发布")) return { label: "今天", cls: "cw-mini-badge-rose" };
   const due = task.text.match(/📅\s*(\d{4}-\d{2}-\d{2})/);
   if (due) return { label: due[1].slice(5), cls: "cw-mini-badge-amber" };
@@ -511,9 +511,9 @@ function parseDailyDigest(markdown, options = {}) {
       limit: 3,
     },
     {
-      key: "hermes",
-      label: "Hermes 复盘",
-      headings: ["Hermes 复盘", "🤖 Hermes 复盘"],
+      key: "agent",
+      label: "Agent 复盘",
+      headings: ["Agent 复盘", "🤖 Agent 复盘"],
       limit: 3,
     },
     {
@@ -644,7 +644,7 @@ module.exports = {
   buildActivityHeatmap,
   collectVaultActivity,
   collectCardStats,
-  collectHermesTaskGroups,
+  collectAgentTaskGroups,
   collectSectionStats,
   collectStats,
   collectTodayStats,

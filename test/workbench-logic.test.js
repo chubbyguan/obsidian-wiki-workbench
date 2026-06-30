@@ -6,7 +6,7 @@ const WorkbenchDerive = require("../workbench-derive");
 const DateUtils = require("../date-utils");
 
 const sampleDashboard = `---
-title: Chubby Wiki Workbench
+title: Wiki Workbench
 workbenchDate: "2026-06-06"
 quickActions:
   - name: "今日日记"
@@ -25,16 +25,16 @@ type: focus
 ### 今日完成
 id: today-done
 type: focus
-- [x] 创建 Chubby 工作台首页
+- [x] 创建 Wiki 工作台首页
 
 ## 02 Todo 列表
 
-### Hermes 队列
-id: hermes-queue
+### Agent 队列
+id: agent-queue
 type: todo
-- [ ] [owner:Hermes] [status:todo] 生成本周数据复盘报告
-- [ ] [owner:关德宇] [status:waiting-confirm] 审核 Hermes 推荐的 5 个选题
-- [x] [owner:Hermes] [status:done] 拉取选题完整素材包
+- [ ] [owner:Agent] [status:todo] 生成本周数据复盘报告
+- [ ] [owner:User] [status:waiting-confirm] 审核 Agent 推荐的 5 个选题
+- [x] [owner:Agent] [status:done] 拉取选题完整素材包
 
 ## 03 内容生成
 
@@ -113,29 +113,29 @@ run("rollover removes daily done tasks, carries open work, keeps content, and re
 
   assert.equal(DashboardLogic.getDashboardWorkbenchDate(rolled), "2026-06-07");
   assert(!rolled.includes("- [x] 安装 Obsidian Dataview 插件"));
-  assert(!rolled.includes("- [x] 创建 Chubby 工作台首页"));
+  assert(!rolled.includes("- [x] 创建 Wiki 工作台首页"));
   assert(rolled.includes("- [ ] 扫描本周入库素材，推荐 5 个选题 [遗留:2026-06-06]"));
-  assert(rolled.includes("- [ ] [owner:Hermes] [status:todo] 生成本周数据复盘报告 [遗留:2026-06-06]"));
+  assert(rolled.includes("- [ ] [owner:Agent] [status:todo] 生成本周数据复盘报告 [遗留:2026-06-06]"));
   assert(rolled.includes("- [x] Phase 0 灵感"));
   assert(rolled.includes("- [x] Phase 1 素材"));
   assert(rolled.includes("- [ ] 喝水 8 杯"));
 });
 
-run("task metadata supports structured and legacy Hermes markers", () => {
-  assert.deepEqual(TaskLogic.getTaskMeta("[owner:Hermes] [status:todo] 拉取素材"), {
-    owner: "Hermes",
+run("task metadata supports structured and legacy Agent markers", () => {
+  assert.deepEqual(TaskLogic.getTaskMeta("[owner:Agent] [status:todo] 拉取素材"), {
+    owner: "Agent",
     status: "todo",
   });
-  assert.deepEqual(TaskLogic.getTaskMeta("[owner:关德宇] [status:waiting-confirm] 审核选题"), {
-    owner: "关德宇",
+  assert.deepEqual(TaskLogic.getTaskMeta("[owner:User] [status:waiting-confirm] 审核选题"), {
+    owner: "User",
     status: "waiting",
   });
-  assert.deepEqual(TaskLogic.getTaskMeta("[Hermes] 生成复盘报告"), {
-    owner: "Hermes",
+  assert.deepEqual(TaskLogic.getTaskMeta("[Agent] 生成复盘报告"), {
+    owner: "Agent",
     status: "todo",
   });
   assert.deepEqual(TaskLogic.getTaskMeta("[等待我确认] 确认选题"), {
-    owner: "关德宇",
+    owner: "User",
     status: "waiting",
   });
   assert.equal(TaskLogic.getTaskMeta("阻塞：缺少素材").status, "blocked");
@@ -143,15 +143,15 @@ run("task metadata supports structured and legacy Hermes markers", () => {
 
 run("cleanTaskLabel hides workbench metadata from UI labels", () => {
   assert.equal(
-    TaskLogic.cleanTaskLabel("[owner:Hermes] [status:waiting-confirm] 审核选题 [遗留:2026-06-06] 📅 2026-06-08"),
+    TaskLogic.cleanTaskLabel("[owner:Agent] [status:waiting-confirm] 审核选题 [遗留:2026-06-06] 📅 2026-06-08"),
     "审核选题",
   );
 });
 
 run("task action helpers update metadata without duplicating tokens", () => {
   assert.equal(
-    TaskLogic.continueTaskText("[owner:Hermes] [status:deferred] 拉素材 [遗留:2026-06-06] 📅 2026-06-08"),
-    "[owner:Hermes] [status:todo] 拉素材",
+    TaskLogic.continueTaskText("[owner:Agent] [status:deferred] 拉素材 [遗留:2026-06-06] 📅 2026-06-08"),
+    "[owner:Agent] [status:todo] 拉素材",
   );
   assert.equal(
     TaskLogic.deferTaskText("[status:todo] 审核选题 [遗留:2026-06-06]", "2026-06-09"),
@@ -162,16 +162,16 @@ run("task action helpers update metadata without duplicating tokens", () => {
     "[status:canceled] 旧任务",
   );
   assert.equal(
-    TaskLogic.delegateTaskText("[owner:关德宇] [status:waiting-confirm] 拉素材"),
-    "[owner:Hermes] [status:todo] 拉素材",
+    TaskLogic.delegateTaskText("[owner:User] [status:waiting-confirm] 拉素材"),
+    "[owner:Agent] [status:todo] 拉素材",
   );
 });
 
-run("prioritizeTasks brings blocked, waiting, Hermes, and carryover items forward", () => {
+run("prioritizeTasks brings blocked, waiting, Agent, and carryover items forward", () => {
   const ordered = TaskLogic.prioritizeTasks([
     { checked: false, text: "普通任务" },
     { checked: true, text: "已完成任务" },
-    { checked: false, text: "[owner:Hermes] 生成复盘报告" },
+    { checked: false, text: "[owner:Agent] 生成复盘报告" },
     { checked: false, text: "[status:waiting-confirm] 审核选题" },
     { checked: false, text: "昨天未完成 [遗留:2026-06-06]" },
     { checked: false, text: "阻塞：缺少链接" },
@@ -184,7 +184,7 @@ run("prioritizeTasks brings blocked, waiting, Hermes, and carryover items forwar
 run("findMatchingTask recovers from stale line indexes", () => {
   const changed = sampleDashboard.replace(
     "- [ ] 扫描本周入库素材，推荐 5 个选题",
-    "- [ ] [owner:Hermes] [status:todo] 扫描本周入库素材，推荐 5 个选题 [遗留:2026-06-06]",
+    "- [ ] [owner:Agent] [status:todo] 扫描本周入库素材，推荐 5 个选题 [遗留:2026-06-06]",
   );
   const data = DashboardLogic.parseDashboard(changed);
   const card = findCard(data, "focus-today");
@@ -214,7 +214,7 @@ run("insertTaskLine appends at end when card is at the bottom of the file", () =
   assert(findCard(reparsed, "health-habits").tasks.some((task) => task.text === "冥想 10 分钟"));
 });
 
-run("updateTaskLine rewrites checkbox and Hermes emoji task lines", () => {
+run("updateTaskLine rewrites checkbox and Agent emoji task lines", () => {
   assert.deepEqual(DashboardLogic.updateTaskLine("- [ ] 拉素材", "完成素材", true), {
     line: "- [x] 完成素材",
     changed: true,
@@ -354,7 +354,7 @@ run("derive stats separates all work from today's operational work", () => {
     total: 11,
     done: 6,
     open: 5,
-    hermes: 1,
+    agent: 1,
     waiting: 1,
     blocked: 0,
     carryover: 0,
@@ -363,16 +363,16 @@ run("derive stats separates all work from today's operational work", () => {
     total: 8,
     done: 4,
     open: 4,
-    hermes: 1,
+    agent: 1,
     waiting: 1,
     blocked: 0,
     carryover: 0,
   });
-  assert.deepEqual(WorkbenchDerive.collectCardStats(findCard(data, "hermes-queue")), {
+  assert.deepEqual(WorkbenchDerive.collectCardStats(findCard(data, "agent-queue")), {
     total: 3,
     done: 1,
     open: 2,
-    hermes: 1,
+    agent: 1,
     waiting: 1,
     blocked: 0,
     carryover: 0,
@@ -405,7 +405,7 @@ run("derive helpers classify cards, visible tasks, pipeline, channels, and badge
   }).map((chip) => chip.key);
   assert.deepEqual(channels, ["wechat", "x", "xiaohongshu"]);
 
-  assert.equal(WorkbenchDerive.getTodoCardKind({ title: "Hermes 队列", tasks: [{ text: "[owner:Hermes] 拉素材" }] }).key, "hermes");
+  assert.equal(WorkbenchDerive.getTodoCardKind({ title: "Agent 队列", tasks: [{ text: "[owner:Agent] 拉素材" }] }).key, "agent");
   assert.equal(WorkbenchDerive.getTaskBadge({ checked: false, text: "审核选题 [status:waiting-confirm]" }).label, "等确认");
   assert.equal(WorkbenchDerive.getTaskBadge({ checked: false, text: "昨天未完成 [遗留:2026-06-06]" }).label, "续 06-06");
 });
@@ -465,7 +465,7 @@ run("derive vault activity summarizes LLM Wiki workspaces and recent deposits", 
   assert.equal(WorkbenchDerive.getActivityWorkspaceForPath("📡 外部输入/播客/a.md").key, "external");
 });
 
-run("parseDailyDigest extracts daily completion, plans, Hermes, and AI summary", () => {
+run("parseDailyDigest extracts daily completion, plans, Agent, and AI summary", () => {
   const digest = WorkbenchDerive.parseDailyDigest(`---
 title: "2026-06-07"
 ---
@@ -480,9 +480,9 @@ title: "2026-06-07"
 
 - [ ] 复盘渠道数据
 
-## Hermes 复盘
+## Agent 复盘
 
-- Hermes 已拉取素材包
+- Agent 已拉取素材包
 
 ## 🤖 AI 今日摘要
 
@@ -497,7 +497,7 @@ title: "2026-06-07"
     "[[产出/草稿/post|草稿]] 回流",
   ]);
   assert.deepEqual(digest.sections.find((section) => section.key === "tomorrow").items, ["复盘渠道数据"]);
-  assert.deepEqual(digest.sections.find((section) => section.key === "hermes").items, ["Hermes 已拉取素材包"]);
+  assert.deepEqual(digest.sections.find((section) => section.key === "agent").items, ["Agent 已拉取素材包"]);
   assert.deepEqual(digest.sections.find((section) => section.key === "ai").items, ["今日产出", "工作台活跃镜头完成"]);
 });
 
@@ -564,7 +564,7 @@ run("renderFocusModule picks focus-today for open work and today-done for comple
   assert.equal(doneCompleted.length, 1, "today-done has 1 completed task to surface in recent list");
 });
 
-run("Hermes-style emoji tasks (- ✅ / - ☑ / - ✔) are parsed as completed tasks", () => {
+run("Agent-style emoji tasks (- ✅ / - ☑ / - ✔) are parsed as completed tasks", () => {
   const markdown = `---
 workbenchDate: "2026-06-17"
 ---
